@@ -87,12 +87,78 @@ st.plotly_chart(
 )
 
 # --------------------------------------------------
+# AMOUNT STATISTICS
+# --------------------------------------------------
+
+st.subheader("Amount Statistics")
+
+amount_stats = kpis["amount_statistics"]
+
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric(
+    "Average Amount",
+    f"{amount_stats['mean_amount']:,.2f}"
+)
+
+col2.metric(
+    "Median Amount",
+    f"{amount_stats['median_amount']:,.2f}"
+)
+
+col3.metric(
+    "Maximum Amount",
+    f"{amount_stats['max_amount']:,.2f}"
+)
+
+col4.metric(
+    "Minimum Amount",
+    f"{amount_stats['min_amount']:,.2f}"
+)
+
+st.divider()
+# --------------------------------------------------
 # FRAUD INTELLIGENCE
 # --------------------------------------------------
 
 st.divider()
 
 st.subheader("Fraud Intelligence")
+# Fraud vs Non-Fraud Pie Chart
+
+fraud_count = kpis["fraud_transactions"]
+
+non_fraud_count = (
+    kpis["total_transactions"]
+    - fraud_count
+)
+
+pie_df = pd.DataFrame(
+    {
+        "Category": [
+            "Fraud",
+            "Non-Fraud"
+        ],
+        "Count": [
+            fraud_count,
+            non_fraud_count
+        ]
+    }
+)
+
+pie_fig = px.pie(
+    pie_df,
+    names="Category",
+    values="Count",
+    title="Fraud vs Non-Fraud Transactions"
+)
+
+st.plotly_chart(
+    pie_fig,
+    width="stretch"
+)
+
+st.divider()
 
 fraud_df = pd.DataFrame(
     list(kpis["fraud_by_type"].items()),
