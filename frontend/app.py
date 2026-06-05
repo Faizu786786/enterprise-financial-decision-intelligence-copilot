@@ -85,3 +85,28 @@ st.plotly_chart(
     fig,
     use_container_width=True
 )
+
+# --------------------------------------------------
+# FRAUD INTELLIGENCE
+# --------------------------------------------------
+
+st.divider()
+
+st.subheader("Fraud Intelligence")
+
+fraud_df = pd.DataFrame(
+    list(kpis["fraud_by_type"].items()),
+    columns=["Transaction Type", "Fraud Count"]
+)
+
+fraud_fig = px.bar(
+    fraud_df,
+    x="Transaction Type",
+    y="Fraud Count",
+    title="Fraud Transactions by Transaction Type"
+)
+
+st.plotly_chart(
+    fraud_fig,
+    width="stretch"
+)

@@ -28,6 +28,12 @@ def calculate_basic_kpis(df):
     "max_amount": float(round(df["amount"].max(), 2)),
     "min_amount": float(round(df["amount"].min(), 2)),
 }
+    fraud_by_type = (
+    df[df["isFraud"] == 1]
+    ["type"]
+    .value_counts()
+    .to_dict()
+)
 
     return {
         "total_transactions": total_transactions,
@@ -37,4 +43,5 @@ def calculate_basic_kpis(df):
         "unique_destination_accounts": unique_destination_accounts,
         "transaction_distribution": transaction_distribution,
         "amount_statistics": amount_stats,
+        "fraud_by_type": fraud_by_type,
     }
