@@ -1,5 +1,6 @@
 import sys
 import os
+import joblib
 
 project_root = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")
@@ -176,3 +177,79 @@ st.plotly_chart(
     fraud_fig,
     width="stretch"
 )
+
+# --------------------------------------------------
+# FRAUD PREDICTION
+# --------------------------------------------------
+
+import joblib
+
+st.divider()
+
+st.header("AI Fraud Prediction")
+
+model = joblib.load(
+    "models/fraud_model.pkl"
+)
+
+amount = st.number_input(
+    "Transaction Amount",
+    min_value=0.0,
+    value=50000.0
+)
+
+oldbalanceOrg = st.number_input(
+    "Old Origin Balance",
+    min_value=0.0,
+    value=100000.0
+)
+
+newbalanceOrig = st.number_input(
+    "New Origin Balance",
+    min_value=0.0,
+    value=50000.0
+)
+
+oldbalanceDest = st.number_input(
+    "Old Destination Balance",
+    min_value=0.0,
+    value=0.0
+)
+
+newbalanceDest = st.number_input(
+    "New Destination Balance",
+    min_value=0.0,
+    value=50000.0
+)
+
+if st.button("Predict Fraud Risk"):
+
+    input_data = pd.DataFrame(
+        [[
+            amount,
+            oldbalanceOrg,
+            newbalanceOrig,
+            oldbalanceDest,
+            newbalanceDest
+        ]],
+        columns=[
+            "amount",
+            "oldbalanceOrg",
+            "newbalanceOrig",
+            "oldbalanceDest",
+            "newbalanceDest"
+        ]
+    )
+
+    prediction = model.predict(
+        input_data
+    )
+
+    if prediction[0] == 1:
+        st.error(
+            "🚨 High Fraud Risk Detected"
+        )
+    else:
+        st.success(
+            "✅ Low Fraud Risk"
+        )
