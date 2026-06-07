@@ -38,6 +38,8 @@ kpis = calculate_basic_kpis(df)
 # KPI SECTION
 # --------------------------------------------------
 
+
+
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric(
@@ -61,6 +63,36 @@ col4.metric(
 )
 
 st.divider()
+
+report_df = pd.DataFrame(
+    {
+        "Metric": [
+            "Total Transactions",
+            "Fraud Transactions",
+            "Fraud Rate (%)",
+            "Unique Origin Accounts",
+            "Unique Destination Accounts"
+        ],
+        "Value": [
+            kpis["total_transactions"],
+            kpis["fraud_transactions"],
+            kpis["fraud_rate"],
+            kpis["unique_origin_accounts"],
+            kpis["unique_destination_accounts"]
+        ]
+    }
+)
+
+csv_report = report_df.to_csv(
+    index=False
+)
+
+st.download_button(
+    label="📥 Download KPI Report",
+    data=csv_report,
+    file_name="financial_kpi_report.csv",
+    mime="text/csv"
+)
 
 # --------------------------------------------------
 # TRANSACTION DISTRIBUTION
@@ -176,6 +208,27 @@ fraud_fig = px.bar(
 st.plotly_chart(
     fraud_fig,
     width="stretch"
+)
+
+fraud_report_df = pd.DataFrame(
+    list(
+        kpis["fraud_by_type"].items()
+    ),
+    columns=[
+        "Transaction Type",
+        "Fraud Count"
+    ]
+)
+
+fraud_csv = fraud_report_df.to_csv(
+    index=False
+)
+
+st.download_button(
+    label="📥 Download Fraud Report",
+    data=fraud_csv,
+    file_name="fraud_report.csv",
+    mime="text/csv"
 )
 
 # --------------------------------------------------
