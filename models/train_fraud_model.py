@@ -74,6 +74,29 @@ model = RandomForestClassifier(
 
 model.fit(X_train, y_train)
 print("Training Complete")
+
+print("\n" + "=" * 60)
+print("FEATURE IMPORTANCE")
+print("=" * 60)
+
+feature_importance = pd.DataFrame(
+    {
+        "Feature": features,
+        "Importance": model.feature_importances_
+    }
+)
+
+feature_importance = (
+    feature_importance
+    .sort_values(
+        by="Importance",
+        ascending=False
+    )
+)
+
+print(feature_importance)
+
+
 joblib.dump(
     model,
     "models/fraud_model.pkl"
@@ -93,3 +116,4 @@ print(confusion_matrix(y_test, y_pred))
 
 print("\nClassification Report:\n")
 print(classification_report(y_test, y_pred))
+

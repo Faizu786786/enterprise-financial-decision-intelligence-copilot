@@ -179,6 +179,45 @@ st.plotly_chart(
 )
 
 # --------------------------------------------------
+# MODEL EXPLAINABILITY
+# --------------------------------------------------
+
+st.divider()
+
+st.header("Model Explainability")
+
+importance_df = pd.DataFrame(
+    {
+        "Feature": [
+            "oldbalanceOrg",
+            "amount",
+            "newbalanceDest",
+            "oldbalanceDest",
+            "newbalanceOrig"
+        ],
+        "Importance": [
+            0.463251,
+            0.218124,
+            0.196146,
+            0.065274,
+            0.057205
+        ]
+    }
+)
+
+importance_fig = px.bar(
+    importance_df,
+    x="Feature",
+    y="Importance",
+    title="Feature Importance in Fraud Detection"
+)
+
+st.plotly_chart(
+    importance_fig,
+    width="stretch"
+)
+
+# --------------------------------------------------
 # FRAUD PREDICTION
 # --------------------------------------------------
 
