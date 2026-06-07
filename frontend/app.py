@@ -84,7 +84,7 @@ fig = px.bar(
 
 st.plotly_chart(
     fig,
-    use_container_width=True
+    width="stretch"
 )
 
 # --------------------------------------------------
@@ -182,7 +182,7 @@ st.plotly_chart(
 # FRAUD PREDICTION
 # --------------------------------------------------
 
-import joblib
+
 
 st.divider()
 
@@ -245,11 +245,30 @@ if st.button("Predict Fraud Risk"):
         input_data
     )
 
-    if prediction[0] == 1:
+    probability = model.predict_proba(
+        input_data
+    )
+
+    fraud_probability = (
+        probability[0][1] * 100
+    )
+
+    st.metric(
+        "Fraud Probability (%)",
+        f"{fraud_probability:.2f}%"
+    )
+
+    if fraud_probability >= 80:
         st.error(
-            "🚨 High Fraud Risk Detected"
+            "🚨 HIGH RISK TRANSACTION"
         )
+
+    elif fraud_probability >= 40:
+        st.warning(
+            "⚠️ MEDIUM RISK TRANSACTION"
+        )
+
     else:
         st.success(
-            "✅ Low Fraud Risk"
+            "✅ LOW RISK TRANSACTION"
         )
