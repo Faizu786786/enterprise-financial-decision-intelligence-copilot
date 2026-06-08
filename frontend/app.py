@@ -31,10 +31,26 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+:root{
+  --bg0:#070A12;
+  --bg1:#0B1222;
+  --card: rgba(255,255,255,0.06);
+  --card2: rgba(255,255,255,0.09);
+  --stroke: rgba(255,255,255,0.14);
+  --stroke2: rgba(255,255,255,0.22);
+  --text:#E5E7EB;
+  --muted:#9CA3AF;
+  --brand1:#22C55E;
+  --brand2:#2563EB;
+  --brand3:#7C3AED;
+}
 
 /* Main background */
 .stApp {
-    background-color: #F8FAFC;
+  background: radial-gradient(1200px circle at 10% 10%, rgba(124,58,237,0.22), transparent 55%),
+              radial-gradient(900px circle at 90% 20%, rgba(37,99,235,0.24), transparent 50%),
+              radial-gradient(700px circle at 20% 90%, rgba(34,197,94,0.16), transparent 45%),
+              linear-gradient(135deg, var(--bg0), var(--bg1));
 }
 
 /* Hide Streamlit menu */
@@ -42,87 +58,143 @@ st.markdown("""
 footer {visibility: hidden;}
 header {visibility: hidden;}
 
+/* Make controls feel modern */
+.stTextInput>div>div,
+.stNumberInput>div>div,
+.stMultiselect>div>div,
+.stSelectbox>div>div,
+.stForm>div,
+.stSidebar {
+  background: transparent;
+}
+
 /* KPI Cards */
 .kpi-box{
-    background: white;
-    padding: 20px;
-    border-radius: 18px;
-    border-left: 6px solid #2563EB;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
+    background: var(--card);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--stroke);
+    padding: 22px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.kpi-box:hover{
+    transform: translateY(-5px);
+    border-color: var(--stroke2);
 }
 
 .kpi-title{
-    color:#64748B;
+    color: rgba(229,231,235,0.75);
     font-size:15px;
+    letter-spacing: 0.2px;
 }
 
 .kpi-value{
-    color:#0F172A;
+    color: #FFFFFF;
     font-size:32px;
-    font-weight:700;
+    font-weight:800;
 }
 
 .amount-box{
-    background:white;
+    background: var(--card2);
     padding:18px;
     border-radius:18px;
-    box-shadow:0px 4px 12px rgba(0,0,0,0.08);
+    box-shadow: 0px 6px 18px rgba(0,0,0,0.22);
     text-align:center;
+    border: 1px solid rgba(255,255,255,0.12);
 }
 
-/* Download Buttons */
+/* Buttons */
 .stDownloadButton button{
-    border-radius:10px;
-    font-weight:bold;
+    border-radius:12px;
+    font-weight:800;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(37,99,235,0.15);
+    color: white;
 }
 
-/* Prediction Button */
 .stButton button{
-    background:#2563EB;
+    background: linear-gradient(90deg, rgba(37,99,235,1), rgba(124,58,237,1));
     color:white;
-    border-radius:12px;
-    font-weight:bold;
+    border-radius:14px;
+    font-weight:900;
     width:100%;
+    border: 1px solid rgba(255,255,255,0.16);
 }
 
 /* Tabs */
 .stTabs [data-baseweb="tab"]{
     font-size:16px;
-    font-weight:600;
+    font-weight:750;
+    color: rgba(229,231,235,0.85);
+    border-radius: 12px;
+}
+
+.stTabs [aria-selected="true"]{
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.16) !important;
+}
+
+/* Chart container tweak */
+[data-testid="stPlotlyChart"]{
+  background: rgba(255,255,255,0.02);
+  border-radius: 18px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <div style="
-        background: linear-gradient(
-            135deg,
-            #1e3a8a,
-            #0f172a
-        );
-        padding:40px;
-        border-radius:20px;
-        text-align:center;
-        margin-bottom:20px;
-    ">
+st.markdown("""
+<div style="
+background:linear-gradient(
+135deg,
+#1e3a8a,
+#2563eb,
+#0f172a
+);
+padding:45px;
+border-radius:25px;
+text-align:center;
+box-shadow:0px 8px 30px rgba(0,0,0,0.15);
+">
 
-    <h1 style="color:white;">
-    🏦 Enterprise Financial Decision Intelligence Copilot
-    </h1>
+<h1 style="
+color:white;
+font-size:42px;
+">
+🏦 Enterprise Financial Intelligence Command Center
+</h1>
 
-    <p style="
-        color:#cbd5e1;
-        font-size:18px;
-    ">
-    AI-Powered Fraud Detection • Financial Analytics • Business Intelligence
-    </p>
+<p style="
+color:#dbeafe;
+font-size:18px;
+">
+AI-Powered Fraud Detection • Explainable AI • Financial Analytics
+</p>
 
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+</div>
+""",
+unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.info(
+        "📊 6.3M+ Transactions Analysed"
+    )
+
+with col2:
+    st.info(
+        "🤖 ML Fraud Detection Active"
+    )
+
+with col3:
+    st.info(
+        "⚡ Real-Time Risk Assessment"
+    )
 
 st.divider()
 
@@ -237,14 +309,28 @@ with tab1:
     csv_report = report_df.to_csv(
         index=False
     )
-    
-    
 
     # --------------------------------------------------
     # TRANSACTION DISTRIBUTION
     # --------------------------------------------------
 
-    st.subheader("Transaction Type Distribution")
+    st.markdown(
+        """
+        <div style="
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.14);
+          border-radius:14px;
+          padding:10px 14px;
+          font-weight:900;
+          letter-spacing:0.3px;
+          color:#E5E7EB;
+          margin-bottom:8px;
+        ">
+          📊 Transaction Type Distribution
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     transaction_df = pd.DataFrame(
         list(
@@ -261,9 +347,19 @@ with tab1:
     )
 
     fig.update_layout(
+        template="plotly_dark",
         title_x=0.5,
-        plot_bgcolor="white",
-        paper_bgcolor="white"
+        height=520,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="white"),
+        margin=dict(l=20,r=20,t=60,b=10),
+        hovermode="x unified",
+    )
+
+    fig.update_traces(
+        hovertemplate="<b>%{x}</b><br>Count: %{y:,}<extra></extra>",
+        marker=dict(line=dict(width=0))
     )
 
     st.plotly_chart(
@@ -275,7 +371,23 @@ with tab1:
     # AMOUNT STATISTICS
     # --------------------------------------------------
     
-    st.subheader("Amount Statistics")
+    st.markdown(
+        """
+        <div style="
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.14);
+          border-radius:14px;
+          padding:10px 14px;
+          font-weight:900;
+          letter-spacing:0.3px;
+          color:#E5E7EB;
+          margin-bottom:8px;
+        ">
+          💠 Amount Statistics
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     amount_stats = kpis["amount_statistics"]
 
@@ -306,22 +418,61 @@ with tab1:
             )
 
     st.divider()
-    
+
     # --------------------------------------------------
     # FRAUD INTELLIGENCE
     # --------------------------------------------------
 
     st.divider()
 
-    st.subheader("Fraud Intelligence")
-    # Fraud vs Non-Fraud Pie Chart
-
-    fraud_count = kpis["fraud_transactions"]
-
-    non_fraud_count = (
-        kpis["total_transactions"]
-        - fraud_count
+    st.markdown(
+        """
+        <div style="
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.14);
+          border-radius:14px;
+          padding:10px 14px;
+          font-weight:900;
+          letter-spacing:0.3px;
+          color:#E5E7EB;
+          margin-bottom:8px;
+        ">
+          🛡️ Fraud Intelligence
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+
+    # --- Interactive controls (precomputed KPI data) ---
+    all_types = sorted(list(kpis["transaction_distribution"].keys()))
+    selected_types = st.multiselect(
+        "Filter by transaction type",
+        options=all_types,
+        default=all_types,
+        help="Updates the fraud intelligence charts using the precomputed KPI breakdown."
+    )
+
+    # --- Aggregate fraud counts from precomputed breakdown ---
+    fraud_by_type = kpis["fraud_by_type"]
+
+    filtered_fraud_total = int(sum(
+        fraud_by_type.get(t, 0) for t in selected_types
+    ))
+
+    # Approximate filtered non-fraud using global totals
+    # (Since the precomputed file contains counts for fraud and all transactions by type,
+    # but not non-fraud counts directly.)
+    total_by_type = kpis["transaction_distribution"]
+    filtered_total = int(sum(
+        total_by_type.get(t, 0) for t in selected_types
+    ))
+
+    filtered_non_fraud_total = int(filtered_total - filtered_fraud_total)
+
+    # Fraud vs Non-Fraud Pie Chart (within selected transaction types)
+
+    fraud_count = filtered_fraud_total
+    non_fraud_count = max(filtered_non_fraud_total, 0)
 
     pie_df = pd.DataFrame(
         {
@@ -340,11 +491,7 @@ with tab1:
         pie_df,
         names="Category",
         values="Count",
-        title="Fraud vs Non-Fraud Transactions"
-    )
-
-    pie_fig.update_layout(
-        title_x=0.5
+        title="Fraud vs Non-Fraud (Selected Types)"
     )
 
     st.plotly_chart(
@@ -352,30 +499,56 @@ with tab1:
         width="stretch"
     )
 
+
     st.divider()
 
-    fraud_df = pd.DataFrame(
-        list(kpis["fraud_by_type"].items()),
-        columns=["Transaction Type", "Fraud Count"]
+    st.markdown(
+        """
+        <div style="
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.14);
+          border-radius:14px;
+          padding:10px 14px;
+          font-weight:900;
+          letter-spacing:0.3px;
+          color:#E5E7EB;
+          margin-bottom:8px;
+        ">
+          🔎 Fraud Count by Transaction Type (Selected)
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+
+    fraud_df = pd.DataFrame(
+        [
+            (t, v)
+            for t, v in kpis["fraud_by_type"].items()
+            if t in selected_types
+        ],
+        columns=["Transaction Type", "Fraud Count"],
+    )
+
 
     fraud_fig = px.bar(
         fraud_df,
         x="Transaction Type",
         y="Fraud Count",
-        title="Fraud Transactions by Transaction Type"
+        title="Fraud by Transaction Type",
     )
 
     fraud_fig.update_layout(
+        template="plotly_white",
         title_x=0.5,
-        plot_bgcolor="white",
-        paper_bgcolor="white"
+        height=500,
     )
 
     st.plotly_chart(
         fraud_fig,
-        width="stretch"
+        width="stretch",
     )
+
+
 
     fraud_report_df = pd.DataFrame(
         list(
@@ -404,9 +577,23 @@ with tab1:
 
     st.divider()
 
-    st.header(
-    "🔍 Fraud Detection Feature Importance"
-)
+    st.markdown(
+        """
+        <div style="
+          background:linear-gradient(90deg, rgba(34,197,94,0.22), rgba(37,99,235,0.18), rgba(124,58,237,0.18));
+          border:1px solid rgba(255,255,255,0.16);
+          border-radius:16px;
+          padding:12px 16px;
+          font-weight:950;
+          letter-spacing:0.2px;
+          color:white;
+          margin-bottom:10px;
+        ">
+          🔍 Fraud Detection Feature Importance
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     importance_df = pd.DataFrame(
         {
@@ -451,7 +638,20 @@ with tab2:
 
     st.markdown(
         """
-        ## 🤖 AI Fraud Risk Assessment
+        <div style="
+          background:linear-gradient(90deg, rgba(37,99,235,0.24), rgba(124,58,237,0.22));
+          border:1px solid rgba(255,255,255,0.16);
+          border-radius:16px;
+          padding:12px 16px;
+          font-weight:950;
+          letter-spacing:0.2px;
+          color:white;
+          margin-bottom:10px;
+        ">
+          🤖 AI Fraud Risk Assessment
+        </div>
+
+        
 
         Enter transaction details and let the AI model
         estimate the fraud probability.
@@ -504,6 +704,8 @@ with tab2:
 
     if submitted:
 
+        # Match model training feature order:
+        # ["amount","oldbalanceOrg","newbalanceOrig","oldbalanceDest","newbalanceDest"]
         input_data = pd.DataFrame(
             [[
                 amount,
@@ -520,6 +722,7 @@ with tab2:
                 "newbalanceDest"
             ]
         )
+
 
         probability = model.predict_proba(
             input_data
@@ -570,18 +773,54 @@ with tab2:
 
         if fraud_probability >= 80:
 
-            st.error(
-                "🚨 HIGH RISK TRANSACTION"
-            )
+            st.markdown(
+f"""
+<div style="
+padding:20px;
+border-radius:15px;
+background:#fee2e2;
+text-align:center;
+font-size:24px;
+font-weight:bold;
+">
+🚨 HIGH RISK TRANSACTION
+</div>
+""",
+unsafe_allow_html=True
+)
 
         elif fraud_probability >= 40:
 
-            st.warning(
-                "⚠️ MEDIUM RISK TRANSACTION"
-            )
+            st.markdown(
+f"""
+<div style="
+padding:20px;
+border-radius:15px;
+background:#fee2e2;
+text-align:center;
+font-size:24px;
+font-weight:bold;
+">
+⚠️ MEDIUM RISK TRANSACTION
+</div>
+""",
+unsafe_allow_html=True
+)
 
         else:
 
-            st.success(
-                "✅ LOW RISK TRANSACTION"
-            )
+            st.markdown(
+f"""
+<div style="
+padding:20px;
+border-radius:15px;
+background:#fee2e2;
+text-align:center;
+font-size:24px;
+font-weight:bold;
+">
+✅ LOW RISK TRANSACTION
+</div>
+""",
+unsafe_allow_html=True
+)
