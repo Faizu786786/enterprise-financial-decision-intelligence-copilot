@@ -1,0 +1,24 @@
+{
+    "total_transactions": 6362620,
+    "fraud_transactions": 8213,
+    "fraud_rate": 0.1291,
+    "unique_origin_accounts": 6353307,
+    "unique_destination_accounts": 2722362,
+    "transaction_distribution": {
+        "CASH_OUT": 2237500,
+        "PAYMENT": 2151495,
+        "CASH_IN": 1399284,
+        "TRANSFER": 532909,
+        "DEBIT": 41432
+    },
+    "amount_statistics": {
+        "mean_amount": 179861.9,
+        "median_amount": 74871.94,
+        "max_amount": 92445516.64,
+        "min_amount": 0.0
+    },
+    "fraud_by_type": {
+        "CASH_OUT": 4116,
+        "TRANSFER": 4097
+    }
+}

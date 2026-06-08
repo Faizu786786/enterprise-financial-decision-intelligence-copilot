@@ -1,3 +1,6 @@
+import streamlit as st
+
+@st.cache_data
 def calculate_basic_kpis(df):
 
     total_transactions = len(df)
