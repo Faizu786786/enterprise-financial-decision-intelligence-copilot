@@ -1,11 +1,5 @@
-# TODO - UI/UX upgrades
-
-- [ ] Implement interactive analytics within precomputed KPI data (type selection + drill-down)
-- [x] Fix fraud prediction input mapping to match expected model feature columns
-
-- [ ] Add prediction explanation panel (risk band + top contributing features using existing importance values)
-- [x] Improve analytics dashboard interactivity (transaction type filtering + selected-type charts)
-
-- [ ] Polish UI/UX: loading spinners, better formatting/hover, consistent chart sizing
-- [ ] Re-run `streamlit run frontend/app.py` and verify no runtime errors
-
+- [ ] Update `frontend/app.py` to use absolute paths (via `project_root`) for loading `models/fraud_model.pkl` and `data/processed/kpis.json`
+- [ ] Refactor percentile_95 computation so Tab 3 can safely use it (shared deterministic computation)
+- [ ] Harden `apply_plotly_clean_theme` to avoid invalid/typo marker attributes and ensure it doesn’t break on different trace types
+- [ ] Escape `chat_input` before injecting into HTML in Tab 3 copilot
+- [ ] Run a quick syntax check (`python -m py_compile frontend/app.py`) to confirm no errors

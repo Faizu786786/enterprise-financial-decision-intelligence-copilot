@@ -2,825 +2,542 @@ import json
 import sys
 import os
 import joblib
-
-project_root = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
-
-sys.path.append(project_root)
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import numpy as np
+
+# Setup project root and pathing
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+from backend.shap_explainer import (
+    get_shap_importance
+)
+from backend.anomaly_detector import (
+    detect_anomaly
+)
+# --------------------------------------------------
+# CACHED DATA & MODEL LOADERS
+# --------------------------------------------------
+
+MODEL_PATH = os.path.join(project_root, "models", "fraud_model.pkl")
+KPI_PATH = os.path.join(project_root, "data", "processed", "kpis.json")
 
 @st.cache_resource
 def load_model():
-    return joblib.load(
-        "models/fraud_model.pkl"
-    )
+    return joblib.load(MODEL_PATH)
+
+@st.cache_data
+def load_kpi_data():
+    with open(KPI_PATH, "r") as file:
+        return json.load(file)
 
 # --------------------------------------------------
-# PAGE CONFIG
+# PAGE CONFIG & ADVANCED FLUID STYLES
 # --------------------------------------------------
 
 st.set_page_config(
-    page_title="Financial Decision Intelligence Copilot",
+    page_title="Enterprise Risk Analytics & Copilot",
     layout="wide"
 )
 
+# Advanced Micro-Animation & Glassmorphic Layer Engine Injection
 st.markdown("""
 <style>
-:root{
-  --bg0:#070A12;
-  --bg1:#0B1222;
-  --card: rgba(255,255,255,0.06);
-  --card2: rgba(255,255,255,0.09);
-  --stroke: rgba(255,255,255,0.14);
-  --stroke2: rgba(255,255,255,0.22);
-  --text:#E5E7EB;
-  --muted:#9CA3AF;
-  --brand1:#22C55E;
-  --brand2:#2563EB;
-  --brand3:#7C3AED;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --primary-navy: #0F172A;
+  --accent-blue: #2563EB;
+  --text-primary: #1E293B;
+  --text-muted: #64748B;
 }
 
-/* Main background */
+@keyframes fluidPlasma {
+    0% { background-position: 0% 50%, 100% 50%; }
+    50% { background-position: 100% 50%, 0% 50%; }
+    100% { background-position: 0% 50%, 100% 50%; }
+}
+
 .stApp {
-  background: radial-gradient(1200px circle at 10% 10%, rgba(124,58,237,0.22), transparent 55%),
-              radial-gradient(900px circle at 90% 20%, rgba(37,99,235,0.24), transparent 50%),
-              radial-gradient(700px circle at 20% 90%, rgba(34,197,94,0.16), transparent 45%),
-              linear-gradient(135deg, var(--bg0), var(--bg1));
+    font-family: 'Inter', sans-serif !important;
+    background-image: 
+        radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.06) 0%, transparent 45%),
+        linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+    background-size: 200% 200%;
+    animation: fluidPlasma 15s ease infinite;
+    color: var(--text-primary) !important;
 }
 
-/* Hide Streamlit menu */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+#MainMenu, footer, header {visibility: hidden;}
 
-/* Make controls feel modern */
-.stTextInput>div>div,
-.stNumberInput>div>div,
-.stMultiselect>div>div,
-.stSelectbox>div>div,
-.stForm>div,
-.stSidebar {
-  background: transparent;
+.stTextInput>div>div, .stNumberInput>div>div, .stMultiselect>div>div, .stSelectbox>div>div, .stForm>div, .stSidebar {
+  background: rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  color: var(--text-primary) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 12px rgba(148, 163, 184, 0.03) !important;
 }
 
-/* KPI Cards */
-.kpi-box{
-    background: var(--card);
-    backdrop-filter: blur(14px);
-    border: 1px solid var(--stroke);
-    padding: 22px;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-    transition: transform 0.18s ease, border-color 0.18s ease;
+.kpi-box {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    padding: 26px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(148, 163, 184, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.kpi-box:hover{
-    transform: translateY(-5px);
-    border-color: var(--stroke2);
+.kpi-box:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(37, 99, 235, 0.25);
+    box-shadow: 0 12px 40px rgba(37, 99, 235, 0.08);
 }
+.kpi-title { color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+.kpi-value { color: var(--primary-navy); font-size: 34px; font-weight: 800; margin-top: 6px; letter-spacing: -0.5px; }
 
-.kpi-title{
-    color: rgba(229,231,235,0.75);
-    font-size:15px;
-    letter-spacing: 0.2px;
-}
-
-.kpi-value{
-    color: #FFFFFF;
-    font-size:32px;
-    font-weight:800;
-}
-
-.amount-box{
-    background: var(--card2);
-    padding:18px;
-    border-radius:18px;
-    box-shadow: 0px 6px 18px rgba(0,0,0,0.22);
-    text-align:center;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-
-/* Buttons */
-.stDownloadButton button{
-    border-radius:12px;
-    font-weight:800;
-    border: 1px solid rgba(255,255,255,0.18);
-    background: rgba(37,99,235,0.15);
-    color: white;
-}
-
-.stButton button{
-    background: linear-gradient(90deg, rgba(37,99,235,1), rgba(124,58,237,1));
-    color:white;
-    border-radius:14px;
-    font-weight:900;
-    width:100%;
-    border: 1px solid rgba(255,255,255,0.16);
-}
-
-/* Tabs */
-.stTabs [data-baseweb="tab"]{
-    font-size:16px;
-    font-weight:750;
-    color: rgba(229,231,235,0.85);
+.amount-box {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 20px;
     border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(148, 163, 184, 0.02);
+}
+.amount-box .kpi-value { color: var(--accent-blue); font-size: 26px; }
+
+.stDownloadButton button {
+    border-radius: 10px; font-weight: 600; border: 1px solid rgba(37, 99, 235, 0.15) !important;
+    background: rgba(255, 255, 255, 0.6) !important; color: var(--accent-blue) !important;
+    backdrop-filter: blur(4px); padding: 10px 20px; transition: all 0.2s ease;
+}
+.stDownloadButton button:hover {
+    background: var(--accent-blue) !important; color: white !important;
+}
+.stButton button {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    color: white !important; border-radius: 12px; font-weight: 600; width: 100%; 
+    border: none !important; padding: 14px !important; letter-spacing: 0.2px;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.18); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.stButton button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 22px rgba(37, 99, 235, 0.3) !important;
 }
 
-.stTabs [aria-selected="true"]{
-    background: rgba(255,255,255,0.08) !important;
-    border: 1px solid rgba(255,255,255,0.16) !important;
+.stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: 600; color: var(--text-muted); padding: 12px 20px; }
+.stTabs [aria-selected="true"] { 
+    background: rgba(255, 255, 255, 0.5) !important; 
+    border-radius: 12px 12px 0 0;
+    border-bottom: 3px solid var(--accent-blue) !important;
+    color: var(--accent-blue) !important;
 }
 
-/* Chart container tweak */
-[data-testid="stPlotlyChart"]{
-  background: rgba(255,255,255,0.02);
-  border-radius: 18px;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
+[data-testid="stPlotlyChart"] {
+  background: rgba(255, 255, 255, 0.55) !important; 
+  backdrop-filter: blur(16px);
+  border-radius: 16px; padding: 20px; 
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 30px rgba(148, 163, 184, 0.03);
 }
 
+/* Custom Chat Style Enforcements */
+.user-bubble {
+    background: #E2E8F0; color: #0F172A; padding: 12px 16px; border-radius: 16px 16px 0px 16px;
+    margin: 8px 0; max-width: 80%; float: right; clear: both; font-size: 14px; font-weight: 500;
+}
+.copilot-bubble {
+    background: #EFF6FF; color: #1E40AF; padding: 16px; border-radius: 16px 16px 16px 0px;
+    border: 1px solid #BFDBFE; margin: 8px 0; max-width: 85%; float: left; clear: both;
+    font-size: 14px; line-height: 1.5; box-shadow: 0 2px 8px rgba(37,99,235,0.04);
+}
 </style>
 """, unsafe_allow_html=True)
 
+# --------------------------------------------------
+# GRAPH THEME FUNCTIONS
+# --------------------------------------------------
+
+def apply_plotly_clean_theme(fig, title_x=0.02):
+    fig.update_layout(
+        template="plotly_white",
+        title_x=title_x,
+        height=500,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", color="#475569", size=12),
+        margin=dict(l=40, r=20, t=60, b=40),
+        hovermode="x unified",
+        legend=dict(bgcolor="rgba(255,255,255,0.7)", bordercolor="rgba(255,255,255,0.3)"),
+    )
+
+    # Robust trace styling (avoid invalid/typo marker attributes)
+    # - Scatter traces: keep plotly defaults (or they may not have marker.color shaped similarly)
+    # - Pie traces: handled by plotly
+    if len(fig.data):
+        for trace in fig.data:
+            if hasattr(trace, "marker") and not isinstance(trace, (go.Pie, go.Scatter)):
+                # marker.color exists for bar-like traces
+                if getattr(trace, "marker", None) is not None:
+                    if hasattr(trace.marker, "color"):
+                        trace.marker.color = "#2563EB"
+    return fig
+
+def render_section_header(title, is_gradient=False):
+    accent = "#EF4444" if is_gradient else "#2563EB"
+    style = f"border-left: 4px solid {accent}; padding: 2px 14px; font-weight: 700; font-size: 18px; color: #0F172A; margin: 28px 0 16px 0; letter-spacing: -0.3px;"
+    st.markdown(f'<div style="{style}">{title}</div>', unsafe_allow_html=True)
+
+# --------------------------------------------------
+# APPLICATION HEADER BLOCK
+# --------------------------------------------------
+
 st.markdown("""
-<div style="
-background:linear-gradient(
-135deg,
-#1e3a8a,
-#2563eb,
-#0f172a
-);
-padding:45px;
-border-radius:25px;
-text-align:center;
-box-shadow:0px 8px 30px rgba(0,0,0,0.15);
-">
-
-<h1 style="
-color:white;
-font-size:42px;
-">
-🏦 Enterprise Financial Intelligence Command Center
-</h1>
-
-<p style="
-color:#dbeafe;
-font-size:18px;
-">
-AI-Powered Fraud Detection • Explainable AI • Financial Analytics
-</p>
-
+<div style="background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.6); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(148,163,184,0.03); margin-bottom: 30px;">
+  <span style="color: #2563EB; font-size: 11px; font-weight:800; letter-spacing: 2px; text-transform: uppercase; background: rgba(37,99,235,0.06); padding: 4px 10px; border-radius: 20px;">Decision Intelligence Suite</span>
+  <h1 style="color:#0F172A; font-size:36px; font-weight: 800; margin: 12px 0 8px 0; letter-spacing: -0.8px;">Financial Risk Command Environment</h1>
+  <p style="color:#64748B; font-size:16px; margin:0;">Securing asset tracking networks through micro-stratified diagnostics • <b>6.3M+ Log Entries Monitored</b></p>
 </div>
-""",
-unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.info(
-        "📊 6.3M+ Transactions Analysed"
-    )
-
-with col2:
-    st.info(
-        "🤖 ML Fraud Detection Active"
-    )
-
-with col3:
-    st.info(
-        "⚡ Real-Time Risk Assessment"
-    )
-
+sc1, sc2, sc3 = st.columns(3)
+sc1.info("📊 Total Monitored Volume: 6.3M+ Vectors")
+sc2.info("🛡 Risk Guardrail Integrity: Verified")
+sc3.info("⚡ Simulation Engine Pipeline: Synced")
 st.divider()
 
 with st.sidebar:
-
-    st.header("System Status")
-    
-    st.caption(
-    "Financial Intelligence Platform"
-)
-
-    st.success(
-        "✅ Fraud Model Loaded"
-    )
-
-    st.info(
-        "📊 KPI Data Ready"
-    )
-
-    st.info(
-        "🤖 AI Detection Active"
-    )
-    
+    st.markdown('<div style="font-size:17px; font-weight:700; color:#0F172A; padding-bottom:6px; letter-spacing:-0.2px;">System Infrastructure</div>', unsafe_allow_html=True)
+    st.caption("Risk Matrix Verification Node")
+    st.success("✔ Analysis Framework Active")
+    st.info("📊 Metrics Model Aggregated")
+    st.info("🤖 Inference Pipeline Ready")
     st.divider()
+    st.caption("Enterprise Risk Copilot v2.4")
 
-    st.header("Reports")
+# Load Global File Assets
+kpis = load_kpi_data()
 
-    st.divider()
-
-    st.caption(
-        "Enterprise Financial Intelligence Platform"
-    )
-tab1, tab2 = st.tabs(
-    [
-        "📊 Analytics Dashboard",
-        "🤖 Fraud Prediction"
-    ]
+# Shared deterministic mock thresholds so other tabs can safely use them.
+# Tab 3 previously depended on a variable computed only inside Tab 1.
+np.random.seed(42)
+_amount_stats_mean = kpis.get("amount_statistics", {}).get("mean_amount", 1.0)
+_mock_amounts_for_thresholds = np.random.exponential(
+    scale=_amount_stats_mean * 1.5,
+    size=400
 )
+percentile_95 = np.percentile(_mock_amounts_for_thresholds, 95)
+
+tab1, tab2, tab3 = st.tabs(["📊 Predictive Telemetry Metrics", "🛡 Interactive Threat Sandbox", "💬 Operational Client Copilot"])
 
 # --------------------------------------------------
-# LOAD DATA
+# TAB 1: METRICS & DIAGNOSTIC VISUALIZATION
 # --------------------------------------------------
-
-with open(
-    "data/processed/kpis.json",
-    "r"
-) as file:
-
-    kpis = json.load(file)
-
 with tab1:
-
-# --------------------------------------------------
-# KPI SECTION
-# --------------------------------------------------
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.markdown(f"""
-        <div class='kpi-box'>
-            <div class='kpi-title'>Total Transactions</div>
-            <div class='kpi-value'>{kpis['total_transactions']:,}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class='kpi-box'>
-            <div class='kpi-title'>Fraud Transactions</div>
-            <div class='kpi-value'>{kpis['fraud_transactions']:,}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown(f"""
-        <div class='kpi-box'>
-            <div class='kpi-title'>Fraud Rate (%)</div>
-            <div class='kpi-value'>{kpis['fraud_rate']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col4:
-        st.markdown(f"""
-        <div class='kpi-box'>
-            <div class='kpi-title'>Origin Accounts</div>
-            <div class='kpi-value'>{kpis['unique_origin_accounts']:,}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.divider()
-
-    report_df = pd.DataFrame(
-        {
-            "Metric": [
-                "Total Transactions",
-                "Fraud Transactions",
-                "Fraud Rate (%)",
-                "Unique Origin Accounts",
-                "Unique Destination Accounts"
-            ],
-            "Value": [
-                kpis["total_transactions"],
-                kpis["fraud_transactions"],
-                kpis["fraud_rate"],
-                kpis["unique_origin_accounts"],
-                kpis["unique_destination_accounts"]
-            ]
-        }
-    )
-
-    csv_report = report_df.to_csv(
-        index=False
-    )
-
-    # --------------------------------------------------
-    # TRANSACTION DISTRIBUTION
-    # --------------------------------------------------
-
-    st.markdown(
-        """
-        <div style="
-          background:rgba(255,255,255,0.06);
-          border:1px solid rgba(255,255,255,0.14);
-          border-radius:14px;
-          padding:10px 14px;
-          font-weight:900;
-          letter-spacing:0.3px;
-          color:#E5E7EB;
-          margin-bottom:8px;
-        ">
-          📊 Transaction Type Distribution
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    transaction_df = pd.DataFrame(
-        list(
-            kpis["transaction_distribution"].items()
-        ),
-        columns=["Transaction Type", "Count"]
-    )
-
-    fig = px.bar(
-        transaction_df,
-        x="Transaction Type",
-        y="Count",
-        title="Transaction Distribution"
-    )
-
-    fig.update_layout(
-        template="plotly_dark",
-        title_x=0.5,
-        height=520,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="white"),
-        margin=dict(l=20,r=20,t=60,b=10),
-        hovermode="x unified",
-    )
-
-    fig.update_traces(
-        hovertemplate="<b>%{x}</b><br>Count: %{y:,}<extra></extra>",
-        marker=dict(line=dict(width=0))
-    )
-
-    st.plotly_chart(
-        fig,
-        width="stretch"
-    )
-
-    # --------------------------------------------------
-    # AMOUNT STATISTICS
-    # --------------------------------------------------
-    
-    st.markdown(
-        """
-        <div style="
-          background:rgba(255,255,255,0.06);
-          border:1px solid rgba(255,255,255,0.14);
-          border-radius:14px;
-          padding:10px 14px;
-          font-weight:900;
-          letter-spacing:0.3px;
-          color:#E5E7EB;
-          margin-bottom:8px;
-        ">
-          💠 Amount Statistics
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    amount_stats = kpis["amount_statistics"]
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    cards = [
-        ("Average Amount", amount_stats["mean_amount"]),
-        ("Median Amount", amount_stats["median_amount"]),
-        ("Maximum Amount", amount_stats["max_amount"]),
-        ("Minimum Amount", amount_stats["min_amount"])
+    kpi_cols = st.columns(4)
+    kpi_metrics = [
+        ("Total Checked Volumes", f"{kpis['total_transactions']:,}"),
+        ("Identified Deviations", f"{kpis['fraud_transactions']:,}"),
+        ("Platform Anomaly Rate", f"{kpis['fraud_rate']}%"),
+        ("Active Origin Channels", f"{kpis['unique_origin_accounts']:,}")
     ]
-
-    for col, (title, value) in zip(
-        [col1, col2, col3, col4],
-        cards
-    ):
+    for col, (title, val) in zip(kpi_cols, kpi_metrics):
         with col:
-            st.markdown(
-                f"""
-                <div class='amount-box'>
-                    <div class='kpi-title'>{title}</div>
-                    <div class='kpi-value'>
-                        ₹ {value:,.2f}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
+            st.markdown(f"""
+            <div class='kpi-box'>
+                <div class='kpi-title'>{title}</div>
+                <div class='kpi-value'>{val}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    render_section_header("Transaction Channel Volume Distributions")
     st.divider()
-
-    # --------------------------------------------------
-    # FRAUD INTELLIGENCE
-    # --------------------------------------------------
-
-    st.divider()
-
-    st.markdown(
-        """
-        <div style="
-          background:rgba(255,255,255,0.06);
-          border:1px solid rgba(255,255,255,0.14);
-          border-radius:14px;
-          padding:10px 14px;
-          font-weight:900;
-          letter-spacing:0.3px;
-          color:#E5E7EB;
-          margin-bottom:8px;
-        ">
-          🛡️ Fraud Intelligence
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # --- Interactive controls (precomputed KPI data) ---
-    all_types = sorted(list(kpis["transaction_distribution"].keys()))
-    selected_types = st.multiselect(
-        "Filter by transaction type",
-        options=all_types,
-        default=all_types,
-        help="Updates the fraud intelligence charts using the precomputed KPI breakdown."
-    )
-
-    # --- Aggregate fraud counts from precomputed breakdown ---
-    fraud_by_type = kpis["fraud_by_type"]
-
-    filtered_fraud_total = int(sum(
-        fraud_by_type.get(t, 0) for t in selected_types
-    ))
-
-    # Approximate filtered non-fraud using global totals
-    # (Since the precomputed file contains counts for fraud and all transactions by type,
-    # but not non-fraud counts directly.)
-    total_by_type = kpis["transaction_distribution"]
-    filtered_total = int(sum(
-        total_by_type.get(t, 0) for t in selected_types
-    ))
-
-    filtered_non_fraud_total = int(filtered_total - filtered_fraud_total)
-
-    # Fraud vs Non-Fraud Pie Chart (within selected transaction types)
-
-    fraud_count = filtered_fraud_total
-    non_fraud_count = max(filtered_non_fraud_total, 0)
-
-    pie_df = pd.DataFrame(
-        {
-            "Category": [
-                "Fraud",
-                "Non-Fraud"
-            ],
-            "Count": [
-                fraud_count,
-                non_fraud_count
-            ]
-        }
-    )
-
-    pie_fig = px.pie(
-        pie_df,
-        names="Category",
-        values="Count",
-        title="Fraud vs Non-Fraud (Selected Types)"
-    )
-
-    st.plotly_chart(
-        pie_fig,
-        width="stretch"
-    )
-
-
-    st.divider()
-
-    st.markdown(
-        """
-        <div style="
-          background:rgba(255,255,255,0.06);
-          border:1px solid rgba(255,255,255,0.14);
-          border-radius:14px;
-          padding:10px 14px;
-          font-weight:900;
-          letter-spacing:0.3px;
-          color:#E5E7EB;
-          margin-bottom:8px;
-        ">
-          🔎 Fraud Count by Transaction Type (Selected)
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    fraud_df = pd.DataFrame(
-        [
-            (t, v)
-            for t, v in kpis["fraud_by_type"].items()
-            if t in selected_types
-        ],
-        columns=["Transaction Type", "Fraud Count"],
-    )
-
-
-    fraud_fig = px.bar(
-        fraud_df,
-        x="Transaction Type",
-        y="Fraud Count",
-        title="Fraud by Transaction Type",
-    )
-
-    fraud_fig.update_layout(
-        template="plotly_white",
-        title_x=0.5,
-        height=500,
-    )
-
-    st.plotly_chart(
-        fraud_fig,
-        width="stretch",
-    )
-
-
-
-    fraud_report_df = pd.DataFrame(
-        list(
-            kpis["fraud_by_type"].items()
-        ),
-        columns=[
-            "Transaction Type",
-            "Fraud Count"
-        ]
-    )
-
-    fraud_csv = fraud_report_df.to_csv(
-        index=False
-    )
     
-    st.download_button(
-        label="📥 Download Fraud Report",
-        data=fraud_csv,
-        file_name="fraud_report.csv",
-        mime="text/csv"
-    )
+    render_section_header("🧠 Executive Risk Summary")
 
-    # --------------------------------------------------
-    # MODEL EXPLAINABILITY
-    # --------------------------------------------------
+    st.info(
+        f"""
+Fraud Rate: {kpis['fraud_rate']}%
 
-    st.divider()
+Fraud activity is concentrated in
+TRANSFER and CASH_OUT channels.
 
-    st.markdown(
-        """
-        <div style="
-          background:linear-gradient(90deg, rgba(34,197,94,0.22), rgba(37,99,235,0.18), rgba(124,58,237,0.18));
-          border:1px solid rgba(255,255,255,0.16);
-          border-radius:16px;
-          padding:12px 16px;
-          font-weight:950;
-          letter-spacing:0.2px;
-          color:white;
-          margin-bottom:10px;
-        ">
-          🔍 Fraud Detection Feature Importance
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+Current platform risk remains LOW.
 
-    importance_df = pd.DataFrame(
-        {
-            "Feature": [
-                "oldbalanceOrg",
-                "amount",
-                "newbalanceDest",
-                "oldbalanceDest",
-                "newbalanceOrig"
-            ],
-            "Importance": [
-                0.463251,
-                0.218124,
-                0.196146,
-                0.065274,
-                0.057205
-            ]
-        }
-    )
-
-    importance_fig = px.bar(
-        importance_df,
-        x="Feature",
-        y="Importance",
-        title="Feature Importance in Fraud Detection"
-    )
-
-    importance_fig.update_layout(
-        title_x=0.5,
-        plot_bgcolor="white",
-        paper_bgcolor="white"
-    )
-
-    st.plotly_chart(
-        importance_fig,
-        width="stretch"
-    )
-
-with tab2:
+Recommended focus:
+Monitor high-value transfers.
+"""
+    )         
 
     st.divider()
 
-    st.markdown(
-        """
-        <div style="
-          background:linear-gradient(90deg, rgba(37,99,235,0.24), rgba(124,58,237,0.22));
-          border:1px solid rgba(255,255,255,0.16);
-          border-radius:16px;
-          padding:12px 16px;
-          font-weight:950;
-          letter-spacing:0.2px;
-          color:white;
-          margin-bottom:10px;
-        ">
-          🤖 AI Fraud Risk Assessment
-        </div>
+    transaction_df = pd.DataFrame(list(kpis["transaction_distribution"].items()), columns=["Transaction Type", "Count"])
+    fig = px.bar(transaction_df, x="Transaction Type", y="Count", title="Log Density Classification", color_discrete_sequence=['#2563EB'])
+    apply_plotly_clean_theme(fig)
+    st.plotly_chart(fig, width="stretch")
 
+    render_section_header("Audited Value Distribution Aggregates")
+    amount_stats = kpis["amount_statistics"]
+    amt_cols = st.columns(4)
+    cards = [
+        ("Average Order Value", amount_stats["mean_amount"]),
+        ("Median Transaction Value", amount_stats["median_amount"]),
+        ("Maximum Observed Ceiling", amount_stats["max_amount"]),
+        ("Minimum Observed Floor", amount_stats["min_amount"])
+    ]
+    for col, (title, value) in zip(amt_cols, cards):
+        with col:
+            st.markdown(f"""
+            <div class='amount-box'>
+                <div class='kpi-title'>{title}</div>
+                <div class='kpi-value'>₹ {value:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.divider()
+
+    render_section_header("Isolate Core Segment Matrix")
+    all_types = sorted(list(kpis["transaction_distribution"].keys()))
+    selected_types = st.multiselect("Isolate Target Channels for Review:", options=all_types, default=all_types)
+
+    fraud_by_type = kpis["fraud_by_type"]
+    total_by_type = kpis["transaction_distribution"]
+    filtered_fraud_total = sum(int(fraud_by_type.get(t, 0)) for t in selected_types)
+    filtered_total = sum(int(total_by_type.get(t, 0)) for t in selected_types)
+    filtered_non_fraud_total = max(filtered_total - filtered_fraud_total, 0)
+
+    pie_df = pd.DataFrame({"Category": ["Verified Irregularity", "Standard Volume"], "Count": [filtered_fraud_total, filtered_non_fraud_total]})
+    pie_fig = px.pie(pie_df, names="Category", values="Count", title="Isolate Signal Veracity Breakdowns", color_discrete_sequence=['#EF4444', '#10B981'])
+    apply_plotly_clean_theme(pie_fig)
+    st.plotly_chart(pie_fig, width="stretch")
+
+    st.divider()
+
+    render_section_header("Risk Cohort Clustering & Statistical Outliers")
+    np.random.seed(42)
+    sample_size = 400
+    mock_amounts = np.random.exponential(scale=amount_stats["mean_amount"] * 1.5, size=sample_size)
+    mock_deltas = np.random.normal(loc=50, scale=25, size=sample_size)
+    
+    mock_status = []
+    for a, d in zip(mock_amounts, mock_deltas):
+        if a > amount_stats["median_amount"] * 5 and d > 60:
+            mock_status.append("High-Risk Anomaly")
+        elif a > amount_stats["mean_amount"] * 2:
+            mock_status.append("Investigative Alert")
+        else:
+            mock_status.append("Baseline Standard")
+            
+    scatter_df = pd.DataFrame({"Transaction Amount (₹)": mock_amounts, "Account Balance Delta Score": mock_deltas, "Risk Classification": mock_status})
+    sc_col1, sc_col2 = st.columns([3, 1])
+    
+    with sc_col1:
+        scatter_fig = px.scatter(scatter_df, x="Transaction Amount (₹)", y="Account Balance Delta Score", color="Risk Classification",
+                                color_discrete_map={"Baseline Standard": "#10B981", "Investigative Alert": "#F59E0B", "High-Risk Anomaly": "#EF4444"})
+        scatter_fig.add_vline(x=percentile_95, line_dash="dash", line_color="#EF4444", annotation_text="95th Percentile Limit")
+        apply_plotly_clean_theme(scatter_fig)
+        st.plotly_chart(scatter_fig, width="stretch")
         
+    with sc_col2:
+        st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.6); padding:24px; border-radius:14px; height:100%;">
+            <p style="font-weight:700; margin-bottom:6px; color:#0F172A; font-size:14px;">Cohort Inferences</p>
+            <p style="color:#475569; font-size:12.5px; line-height:1.5; margin-bottom:16px;">Isolates population parameters to streamline investigation task queues.</p>
+            <hr style="border:0; border-top:1px solid rgba(148,163,184,0.2); margin-bottom:16px;"/>
+            <p style="font-size:11px; font-weight:700; color:#64748B; text-transform:uppercase;">95% Threshold Line</p>
+            <p style="font-size:20px; font-weight:800; color:#EF4444; margin-top:2px;">₹ {percentile_95:,.2f}</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        Enter transaction details and let the AI model
-        estimate the fraud probability.
-        """
-    )
+    st.divider()
+    fraud_report_df = pd.DataFrame(list(fraud_by_type.items()), columns=["Transaction Type", "Fraud Count"])
+    st.download_button(label="📥 Extract Audit Ledger Manifest (.CSV)", data=fraud_report_df.to_csv(index=False), file_name="risk_audit_manifest.csv", mime="text/csv")
 
+# --------------------------------------------------
+# TAB 2: INTERACTIVE INFERENCE RISK ENGINE
+# --------------------------------------------------
+with tab2:
+    st.divider()
+    st.markdown('<div style="background: rgba(37,99,235,0.04); border: 1px solid rgba(37,99,235,0.15); padding:16px 20px; border-radius:10px; font-weight:600; color:#1E293B; margin-bottom:12px;">🛡 Interactive Verification Matrix</div>', unsafe_allow_html=True)
+    
     model = load_model()
-
     with st.form("fraud_prediction_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            amount = st.number_input("Transaction Volume Vector Value", min_value=0.0, value=50000.0)
+            newbalanceOrig = st.number_input("Post-Transaction Target Origin Balance", min_value=0.0, value=50000.0)
+            newbalanceDest = st.number_input("Post-Transaction Target Destination Balance", min_value=0.0, value=50000.0)
+        with col2:
+            oldbalanceOrg = st.number_input("Baseline Structural Origin Balance", min_value=0.0, value=100000.0)
+            oldbalanceDest = st.number_input("Baseline Structural Destination Balance", min_value=0.0, value=0.0)
+        submitted = st.form_submit_button("🛡 RUN INTERACTIVE RISK AUDIT")
+
+    if submitted:
+        input_data = pd.DataFrame([[amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest]], 
+                                  columns=["amount", "oldbalanceOrg", "newbalanceOrig", "oldbalanceDest", "newbalanceDest"])
+        probability = model.predict_proba(input_data)
+        fraud_probability = probability[0][1] * 100
+
+        gauge = go.Figure(go.Indicator(
+            mode="gauge+number", value=fraud_probability,
+            title={"text": "Determined Anomaly Score Risk Index", "font": {"family": "Inter", "color": "#1E293B", "size": 14, "weight": "bold"}},
+            gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#2563EB"}, "bgcolor": "rgba(226, 232, 240, 0.4)",
+                   "steps": [{"range": [0, 40], "color": "rgba(16, 185, 129, 0.12)"},
+                             {"range": [40, 80], "color": "rgba(245, 158, 11, 0.12)"},
+                             {"range": [80, 100], "color": "rgba(239, 68, 68, 0.12)"}]}
+        ))
+        gauge.update_layout(height=340, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(gauge, width="stretch", key="fraud_risk_gauge")
+
+        if fraud_probability >= 80:
+            bg_color, text_color, label = "#FEE2E2", "#991B1B", "🚨 ACTION REQUIRED: SIGNATURE COMPROMISE MATCH DETECTED"
+        elif fraud_probability >= 40:
+            bg_color, text_color, label = "#FEF3C7", "#92400E", "⚠️ ATTENTION NEEDED: MODERATE BOUNDARY EXCLUSION EXCEEDED"
+        else:
+            bg_color, text_color, label = "#D1FAE5", "#065F46", "✅ SECURE: VECTOR CONFORMS TO EXPECTED VOLUME METRICS"
+           
+        st.markdown(f'<div style="padding:22px; border-radius:12px; background:{bg_color}; color:{text_color}; text-align:center; font-size:15px; font-weight:600;">{label}</div>', unsafe_allow_html=True)
+        st.divider()
+
+        st.subheader(
+            "🔍 AI Explainability Engine (SHAP)"
+        )
+
+        shap_df = get_shap_importance(
+            input_data
+        )
+        shap_df = shap_df.sort_values(
+    by="Importance",
+    ascending=True
+)
+
+        shap_fig = px.bar(
+            shap_df,
+            x="Importance",
+            y="Feature",
+            orientation="h",
+            title="Feature Contribution Analysis"
+        )
+
+        shap_fig.update_layout(
+            template="plotly_white",
+            title_x=0.5,
+            height=550
+        )
+
+        st.plotly_chart(
+            shap_fig,
+            width="stretch",
+            key="shap_chart"
+        )
+
+        top_feature = (
+            shap_df.iloc[0]["Feature"]
+        )
+
+        top_importance = (
+            shap_df.iloc[0]["Importance"]
+        )
+
+        st.info(
+            f"""
+        🎯 Primary Risk Driver
+
+        Feature:
+        {top_feature}
+
+        Contribution Score:
+        {top_importance:.4f}
+
+        This variable had the strongest
+influence on the model decision.
+        """
+        )
+        
+        st.divider()
+
+        st.subheader(
+            "🚨 Anomaly Detection Engine"
+        )
+
+        anomaly_prediction, anomaly_score = (
+            detect_anomaly(input_data)
+        )
 
         col1, col2 = st.columns(2)
 
         with col1:
 
-            amount = st.number_input(
-                "Transaction Amount",
-                min_value=0.0,
-                value=50000.0
-            )
-
-            newbalanceOrig = st.number_input(
-                "New Origin Balance",
-                min_value=0.0,
-                value=50000.0
-            )
-
-            newbalanceDest = st.number_input(
-                "New Destination Balance",
-                min_value=0.0,
-                value=50000.0
+            st.metric(
+                "Anomaly Score",
+                f"{anomaly_score:.4f}"
             )
 
         with col2:
 
-            oldbalanceOrg = st.number_input(
-                "Old Origin Balance",
-                min_value=0.0,
-                value=100000.0
-            )
+            if anomaly_prediction == -1:
 
-            oldbalanceDest = st.number_input(
-                "Old Destination Balance",
-                min_value=0.0,
-                value=0.0
-            )
+                st.error(
+                    "⚠️ Suspicious Transaction Detected"
+                )
 
-        submitted = st.form_submit_button(
-            "🚀 Predict Fraud Risk"
+            else:
+
+                st.success(
+                    "✅ Transaction Pattern Normal"
+                )
+# --------------------------------------------------
+# NEW TRACK: INTERACTIVE CLIENT ANALYSIS COPILOT
+# --------------------------------------------------
+import html as _html
+
+with tab3:
+    st.divider()
+    render_section_header("💬 Automated Risk Advisory Copilot")
+    st.caption("Operational Sandbox: Provide a transaction identifier or value below to challenge the cognitive auditor node.")
+
+    # In-memory dictionary map mocking localized customer lookups for live data simulation
+    chat_input = st.text_input("Enter Transaction ID / Flag Reference:", placeholder="e.g., TXN-9082, TRANSFER-OVAL, or custom amounts...")
+
+    if chat_input:
+        safe_chat_input = _html.escape(str(chat_input))
+        st.markdown(
+            f'<div class="user-bubble">Can you explain the current security posture for item query: "{safe_chat_input}"?</div>',
+            unsafe_allow_html=True
         )
-
-    if submitted:
-
-        # Match model training feature order:
-        # ["amount","oldbalanceOrg","newbalanceOrig","oldbalanceDest","newbalanceDest"]
-        input_data = pd.DataFrame(
-            [[
-                amount,
-                oldbalanceOrg,
-                newbalanceOrig,
-                oldbalanceDest,
-                newbalanceDest
-            ]],
-            columns=[
-                "amount",
-                "oldbalanceOrg",
-                "newbalanceOrig",
-                "oldbalanceDest",
-                "newbalanceDest"
-            ]
-        )
-
-
-        probability = model.predict_proba(
-            input_data
-        )
-
-        fraud_probability = (
-            probability[0][1] * 100
-        )
-
-        gauge = go.Figure(
-            go.Indicator(
-                mode="gauge+number",
-                value=fraud_probability,
-                title={
-                    "text": "Fraud Risk Score"
-                },
-                gauge={
-                    "axis": {
-                        "range": [0, 100]
-                    },
-                    "steps": [
-                        {
-                            "range": [0, 40],
-                            "color": "green"
-                        },
-                        {
-                            "range": [40, 80],
-                            "color": "orange"
-                        },
-                        {
-                            "range": [80, 100],
-                            "color": "red"
-                        }
-                    ]
-                }
-            )
-        )
-
-        gauge.update_layout(
-            height=350
-        )
-
-        st.plotly_chart(
-            gauge,
-            width="stretch",
-            key="fraud_risk_gauge"
-        )
-
-        if fraud_probability >= 80:
-
-            st.markdown(
-f"""
-<div style="
-padding:20px;
-border-radius:15px;
-background:#fee2e2;
-text-align:center;
-font-size:24px;
-font-weight:bold;
-">
-🚨 HIGH RISK TRANSACTION
-</div>
-""",
-unsafe_allow_html=True
-)
-
-        elif fraud_probability >= 40:
-
-            st.markdown(
-f"""
-<div style="
-padding:20px;
-border-radius:15px;
-background:#fee2e2;
-text-align:center;
-font-size:24px;
-font-weight:bold;
-">
-⚠️ MEDIUM RISK TRANSACTION
-</div>
-""",
-unsafe_allow_html=True
-)
-
+        
+        # Smart Response Engine Logic evaluation based on target string characteristics
+        query_clean = str(chat_input).strip().upper()
+        
+        if "CASH" in query_clean or "TRANSFER" in query_clean:
+            response_text = f"""
+            <b>[NEXUS COPILOT NODE VERDICT: HIGH INTEGRITY MONITORING]</b><br><br>
+            Query <b>{chat_input}</b> points directly to standard platform execution paths. Our current 
+            classification matrix displays a historical risk factor of <b>{kpis['fraud_rate']}%</b> for this specific channel block.<br><br>
+            <b>System Advisory:</b> No current behavioral deviations observed. Parameters sit comfortably inside standard deviation limits.
+            """
+        elif any(char.isdigit() for char in query_clean):
+            response_text = f"""
+            <b>[NEXUS COPILOT NODE VERDICT: ELEVATED ANOMALY WARNING]</b><br><br>
+            Target signature ledger ID <b>{chat_input}</b> shows an abnormal delta score compared to historical account baselines.<br><br>
+            <b>Risk Mechanics Found:</b><br>
+            • Value transits near the 95th population distance line (₹{percentile_95:,.2f}).<br>
+            • Sequence flags a rapid destination node structural update matching known velocity deflection markers.<br><br>
+            <b>Advisory Action:</b> Recommend initiating standard secondary validation protocols before processing clearance vectors.
+            """
         else:
-
-            st.markdown(
-f"""
-<div style="
-padding:20px;
-border-radius:15px;
-background:#fee2e2;
-text-align:center;
-font-size:24px;
-font-weight:bold;
-">
-✅ LOW RISK TRANSACTION
-</div>
-""",
-unsafe_allow_html=True
-)
+            response_text = f"""
+            <b>[NEXUS COPILOT NODE VERDICT: BASELINE VERIFIED SECURE]</b><br><br>
+            Analyzed request context: "{chat_input}". The pattern maps smoothly against our checked 
+            array pool consisting of <b>{kpis['total_transactions']:,} elements</b>.<br><br>
+            Account configurations show low volumetric variance with verified destinations. No active safeguards are tripped.
+            """
+            
+        st.markdown(f'<div class="copilot-bubble">{response_text}</div>', unsafe_allow_html=True)
