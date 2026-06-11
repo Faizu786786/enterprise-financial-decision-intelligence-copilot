@@ -1,14 +1,14 @@
+import os
 import joblib
 import shap
 import pandas as pd
 
-model = joblib.load(
-    "models/fraud_model.pkl"
-)
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(backend_dir, ".."))
+MODEL_PATH = os.path.join(project_root, "models", "fraud_model.pkl")
 
-explainer = shap.TreeExplainer(
-    model
-)
+model = joblib.load(MODEL_PATH)
+explainer = shap.TreeExplainer(model)
 
 def get_shap_importance(input_data):
 

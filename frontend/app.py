@@ -15,9 +15,15 @@ if project_root not in sys.path:
 from backend.shap_explainer import (
     get_shap_importance
 )
+from backend.copilot import (
+    ask_copilot,
+    generate_executive_summary
+)
 from backend.anomaly_detector import (
     detect_anomaly
 )
+from datetime import datetime
+import random
 # --------------------------------------------------
 # CACHED DATA & MODEL LOADERS
 # --------------------------------------------------
@@ -159,6 +165,26 @@ st.markdown("""
     border: 1px solid #BFDBFE; margin: 8px 0; max-width: 85%; float: left; clear: both;
     font-size: 14px; line-height: 1.5; box-shadow: 0 2px 8px rgba(37,99,235,0.04);
 }
+.executive-box{
+    background: linear-gradient(
+        135deg,
+        #0F172A,
+        #1E40AF
+    );
+    color:white;
+    padding:25px;
+    border-radius:18px;
+    margin-bottom:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.15);
+}
+.alert-box{
+    background:#FEF2F2;
+    border-left:6px solid #DC2626;
+    padding:18px;
+    border-radius:12px;
+    margin-bottom:15px;
+    font-size:16px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -184,11 +210,15 @@ def apply_plotly_clean_theme(fig, title_x=0.02):
     # - Pie traces: handled by plotly
     if len(fig.data):
         for trace in fig.data:
-            if hasattr(trace, "marker") and not isinstance(trace, (go.Pie, go.Scatter)):
-                # marker.color exists for bar-like traces
-                if getattr(trace, "marker", None) is not None:
-                    if hasattr(trace.marker, "color"):
-                        trace.marker.color = "#2563EB"
+            try:
+                if hasattr(trace, "marker") and not isinstance(trace, (go.Pie, go.Scatter)):
+                    # marker.color exists for bar-like traces
+                    marker = getattr(trace, "marker", None)
+                    if marker is not None:
+                        if hasattr(marker, "color") and marker.color is not None:
+                            trace.marker.color = "#2563EB"
+            except Exception:
+                pass
     return fig
 
 def render_section_header(title, is_gradient=False):
@@ -226,17 +256,44 @@ with st.sidebar:
 # Load Global File Assets
 kpis = load_kpi_data()
 
+@st.cache_data(ttl=3600)
+def get_executive_summary():
+    try:
+         return generate_executive_summary(kpis)
+    except Exception as e:
+         return f"⚠️ AI Chief Risk Officer executive summary is temporarily unavailable due to API limits ({str(e)}). Please try reloading the page later."
+
+@st.cache_data
+def get_percentile_95(amount_stats_mean):
+    np.random.seed(42)
+    mock_amounts_for_thresholds = np.random.exponential(
+        scale=amount_stats_mean * 1.5,
+        size=400
+    )
+    return float(np.percentile(mock_amounts_for_thresholds, 95))
+
 # Shared deterministic mock thresholds so other tabs can safely use them.
 # Tab 3 previously depended on a variable computed only inside Tab 1.
-np.random.seed(42)
 _amount_stats_mean = kpis.get("amount_statistics", {}).get("mean_amount", 1.0)
-_mock_amounts_for_thresholds = np.random.exponential(
-    scale=_amount_stats_mean * 1.5,
-    size=400
-)
-percentile_95 = np.percentile(_mock_amounts_for_thresholds, 95)
+percentile_95 = get_percentile_95(_amount_stats_mean)
 
-tab1, tab2, tab3 = st.tabs(["📊 Predictive Telemetry Metrics", "🛡 Interactive Threat Sandbox", "💬 Operational Client Copilot"])
+tab1, tab2, tab3 = st.tabs(
+    [
+        "📊 Analytics Dashboard",
+        "🤖 Fraud Prediction",
+        "🧠 AI Copilot"
+    ]
+)
+def generate_live_alert():
+    alerts = [
+        "🚨 High-risk transfer detected",
+        "⚠️ Abnormal destination balance movement",
+        "⚠️ Potential account takeover pattern",
+        "✅ Transaction verified successfully",
+        "🚨 Isolation Forest anomaly detected",
+        "⚠️ Velocity threshold exceeded"
+    ]
+    return random.choice(alerts)
 
 # --------------------------------------------------
 # TAB 1: METRICS & DIAGNOSTIC VISUALIZATION
@@ -257,26 +314,36 @@ with tab1:
                 <div class='kpi-value'>{val}</div>
             </div>
             """, unsafe_allow_html=True)
+            
     render_section_header("Transaction Channel Volume Distributions")
     st.divider()
     
-    render_section_header("🧠 Executive Risk Summary")
+    render_section_header("🚨 Live Fraud Monitoring Feed")
 
-    st.info(
+    alerts = [generate_live_alert() for _ in range(5)]
+    for alert in alerts:
+        st.markdown(
+            f"""
+            <div class='alert-box'>
+                {alert}
+                <br>
+                {datetime.now().strftime("%H:%M:%S")}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+    render_section_header("🧠 Executive Intelligence Center")
+    summary = get_executive_summary()
+    
+    st.markdown(
         f"""
-Fraud Rate: {kpis['fraud_rate']}%
-
-Fraud activity is concentrated in
-TRANSFER and CASH_OUT channels.
-
-Current platform risk remains LOW.
-
-Recommended focus:
-Monitor high-value transfers.
-"""
-    )         
-
-    st.divider()
+        <div class="executive-box">
+            {summary}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     transaction_df = pd.DataFrame(list(kpis["transaction_distribution"].items()), columns=["Transaction Type", "Count"])
     fig = px.bar(transaction_df, x="Transaction Type", y="Count", title="Log Density Classification", color_discrete_sequence=['#2563EB'])
@@ -357,26 +424,51 @@ Monitor high-value transfers.
         """, unsafe_allow_html=True)
 
     st.divider()
+    
     fraud_report_df = pd.DataFrame(list(fraud_by_type.items()), columns=["Transaction Type", "Fraud Count"])
     st.download_button(label="📥 Extract Audit Ledger Manifest (.CSV)", data=fraud_report_df.to_csv(index=False), file_name="risk_audit_manifest.csv", mime="text/csv")
+
+def generate_sample_transaction():
+    return {
+        "amount": random.randint(1000, 500000),
+        "oldbalanceOrg": random.randint(50000, 1000000),
+        "newbalanceOrig": random.randint(0, 500000),
+        "oldbalanceDest": random.randint(0, 500000),
+        "newbalanceDest": random.randint(0, 1000000)
+    }
 
 # --------------------------------------------------
 # TAB 2: INTERACTIVE INFERENCE RISK ENGINE
 # --------------------------------------------------
 with tab2:
     st.divider()
+    
+    if st.button("🎲 Generate Suspicious Transaction"):
+        sample = generate_sample_transaction()
+        st.session_state["generated_transaction"] = sample
+        st.success("Sample transaction generated.")
+
+    # Pre-populate form fields from generated transaction if available
+    gen_txn = st.session_state.get("generated_transaction", {})
+    amount = gen_txn.get("amount", 50000.0)
+    oldbalanceOrg = gen_txn.get("oldbalanceOrg", 100000.0)
+    newbalanceOrig = gen_txn.get("newbalanceOrig", 50000.0)
+    oldbalanceDest = gen_txn.get("oldbalanceDest", 0.0)
+    newbalanceDest = gen_txn.get("newbalanceDest", 50000.0)
+
     st.markdown('<div style="background: rgba(37,99,235,0.04); border: 1px solid rgba(37,99,235,0.15); padding:16px 20px; border-radius:10px; font-weight:600; color:#1E293B; margin-bottom:12px;">🛡 Interactive Verification Matrix</div>', unsafe_allow_html=True)
     
     model = load_model()
+
     with st.form("fraud_prediction_form"):
         col1, col2 = st.columns(2)
         with col1:
-            amount = st.number_input("Transaction Volume Vector Value", min_value=0.0, value=50000.0)
-            newbalanceOrig = st.number_input("Post-Transaction Target Origin Balance", min_value=0.0, value=50000.0)
-            newbalanceDest = st.number_input("Post-Transaction Target Destination Balance", min_value=0.0, value=50000.0)
+            amount = st.number_input("Transaction Volume Vector Value", min_value=0.0, value=float(amount))
+            newbalanceOrig = st.number_input("Post-Transaction Target Origin Balance", min_value=0.0, value=float(newbalanceOrig))
+            newbalanceDest = st.number_input("Post-Transaction Target Destination Balance", min_value=0.0, value=float(newbalanceDest))
         with col2:
-            oldbalanceOrg = st.number_input("Baseline Structural Origin Balance", min_value=0.0, value=100000.0)
-            oldbalanceDest = st.number_input("Baseline Structural Destination Balance", min_value=0.0, value=0.0)
+            oldbalanceOrg = st.number_input("Baseline Structural Origin Balance", min_value=0.0, value=float(oldbalanceOrg))
+            oldbalanceDest = st.number_input("Baseline Structural Destination Balance", min_value=0.0, value=float(oldbalanceDest))
         submitted = st.form_submit_button("🛡 RUN INTERACTIVE RISK AUDIT")
 
     if submitted:
@@ -406,17 +498,10 @@ with tab2:
         st.markdown(f'<div style="padding:22px; border-radius:12px; background:{bg_color}; color:{text_color}; text-align:center; font-size:15px; font-weight:600;">{label}</div>', unsafe_allow_html=True)
         st.divider()
 
-        st.subheader(
-            "🔍 AI Explainability Engine (SHAP)"
-        )
+        st.subheader("🔍 AI Explainability Engine (SHAP)")
 
-        shap_df = get_shap_importance(
-            input_data
-        )
-        shap_df = shap_df.sort_values(
-    by="Importance",
-    ascending=True
-)
+        shap_df = get_shap_importance(input_data)
+        shap_df = shap_df.sort_values(by="Importance", ascending=True)
 
         shap_fig = px.bar(
             shap_df,
@@ -438,61 +523,73 @@ with tab2:
             key="shap_chart"
         )
 
-        top_feature = (
-            shap_df.iloc[0]["Feature"]
-        )
-
-        top_importance = (
-            shap_df.iloc[0]["Importance"]
-        )
+        top_feature = shap_df.iloc[0]["Feature"]
+        top_importance = shap_df.iloc[0]["Importance"]
 
         st.info(
             f"""
-        🎯 Primary Risk Driver
-
-        Feature:
-        {top_feature}
-
-        Contribution Score:
-        {top_importance:.4f}
-
-        This variable had the strongest
-influence on the model decision.
-        """
+            🎯 Primary Risk Driver
+            
+            Feature: {top_feature}
+            
+            Contribution Score: {top_importance:.4f}
+            
+            This variable had the strongest influence on the model decision.
+            """
         )
         
         st.divider()
 
-        st.subheader(
-            "🚨 Anomaly Detection Engine"
-        )
+        st.subheader("🚨 Anomaly Detection Engine")
 
-        anomaly_prediction, anomaly_score = (
-            detect_anomaly(input_data)
-        )
+        anomaly_prediction, anomaly_score = detect_anomaly(input_data)
 
         col1, col2 = st.columns(2)
 
         with col1:
-
-            st.metric(
-                "Anomaly Score",
-                f"{anomaly_score:.4f}"
-            )
+            st.metric("Anomaly Score", f"{anomaly_score:.4f}")
 
         with col2:
-
             if anomaly_prediction == -1:
-
-                st.error(
-                    "⚠️ Suspicious Transaction Detected"
-                )
-
+                st.error("⚠️ Suspicious Transaction Detected")
             else:
+                st.success("✅ Transaction Pattern Normal")
+                
+        st.divider()
 
-                st.success(
-                    "✅ Transaction Pattern Normal"
+        render_section_header("🧠 AI Transaction Assessment")
+
+        st.metric(
+            "Generated Scenario Amount",
+            f"₹ {amount:,.0f}"
+        )
+
+        with st.spinner("Generating AI assessment..."):
+            try:
+                ai_summary = ask_copilot(
+                    f"""
+                    Transaction Amount: {amount}
+                    Old Origin Balance: {oldbalanceOrg}
+                    New Origin Balance: {newbalanceOrig}
+                    Old Destination Balance: {oldbalanceDest}
+                    New Destination Balance: {newbalanceDest}
+                    Fraud Probability: {fraud_probability:.2f}%
+                    Anomaly Score: {anomaly_score:.4f}
+                    """,
+                    kpis
                 )
+            except Exception as e:
+                ai_summary = f"⚠️ Copilot advisory assessment is temporarily unavailable due to API rate limits ({str(e)}). Please try again later."
+
+        st.markdown(
+            f"""
+            <div class='copilot-bubble'>
+                {ai_summary}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
 # --------------------------------------------------
 # NEW TRACK: INTERACTIVE CLIENT ANALYSIS COPILOT
 # --------------------------------------------------
@@ -513,31 +610,20 @@ with tab3:
             unsafe_allow_html=True
         )
         
-        # Smart Response Engine Logic evaluation based on target string characteristics
-        query_clean = str(chat_input).strip().upper()
-        
-        if "CASH" in query_clean or "TRANSFER" in query_clean:
-            response_text = f"""
-            <b>[NEXUS COPILOT NODE VERDICT: HIGH INTEGRITY MONITORING]</b><br><br>
-            Query <b>{chat_input}</b> points directly to standard platform execution paths. Our current 
-            classification matrix displays a historical risk factor of <b>{kpis['fraud_rate']}%</b> for this specific channel block.<br><br>
-            <b>System Advisory:</b> No current behavioral deviations observed. Parameters sit comfortably inside standard deviation limits.
-            """
-        elif any(char.isdigit() for char in query_clean):
-            response_text = f"""
-            <b>[NEXUS COPILOT NODE VERDICT: ELEVATED ANOMALY WARNING]</b><br><br>
-            Target signature ledger ID <b>{chat_input}</b> shows an abnormal delta score compared to historical account baselines.<br><br>
-            <b>Risk Mechanics Found:</b><br>
-            • Value transits near the 95th population distance line (₹{percentile_95:,.2f}).<br>
-            • Sequence flags a rapid destination node structural update matching known velocity deflection markers.<br><br>
-            <b>Advisory Action:</b> Recommend initiating standard secondary validation protocols before processing clearance vectors.
-            """
-        else:
-            response_text = f"""
-            <b>[NEXUS COPILOT NODE VERDICT: BASELINE VERIFIED SECURE]</b><br><br>
-            Analyzed request context: "{chat_input}". The pattern maps smoothly against our checked 
-            array pool consisting of <b>{kpis['total_transactions']:,} elements</b>.<br><br>
-            Account configurations show low volumetric variance with verified destinations. No active safeguards are tripped.
-            """
-            
-        st.markdown(f'<div class="copilot-bubble">{response_text}</div>', unsafe_allow_html=True)
+        with st.spinner("🧠 NEXUS AI is analyzing..."):
+            try:
+                response_text = ask_copilot(
+                    chat_input,
+                    kpis
+                )
+            except Exception as e:
+                response_text = f"⚠️ Nexus AI Copilot is temporarily unavailable due to API rate limits ({str(e)}). Please try again later."
+
+        st.markdown(
+            f"""
+            <div class="copilot-bubble">
+            {response_text}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )

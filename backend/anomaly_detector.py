@@ -1,8 +1,11 @@
+import os
 import joblib
 
-model = joblib.load(
-    "models/anomaly_model.pkl"
-)
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(backend_dir, ".."))
+MODEL_PATH = os.path.join(project_root, "models", "anomaly_model.pkl")
+
+model = joblib.load(MODEL_PATH)
 
 def detect_anomaly(input_data):
 
