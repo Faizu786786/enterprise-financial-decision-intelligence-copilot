@@ -7,6 +7,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+from datetime import datetime, timedelta
+import random
+import html as _html
 
 # Setup project root and pathing
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -22,8 +25,36 @@ from backend.copilot import (
 from backend.anomaly_detector import (
     detect_anomaly
 )
-from datetime import datetime
-import random
+
+# --------------------------------------------------
+# SESSION STATE INITIALIZATION
+# --------------------------------------------------
+
+# Persistent Live Feed Alerts
+if "live_alerts" not in st.session_state:
+    base_time = datetime.now()
+    initial_messages = [
+        ("🚨 High-risk transfer detected from account origin group X90", "danger"),
+        ("⚠️ Velocity threshold exceeded: multiple rapid micro-transfers", "warning"),
+        ("⚠️ Abnormal destination balance movement in terminal nodes", "warning"),
+        ("✅ Transaction verified successfully by isolation engine", "success"),
+        ("🚨 Anomaly detected: structural divergence in balance delta", "danger")
+    ]
+    alerts_list = []
+    for i, (msg, type_) in enumerate(initial_messages):
+        alerts_list.append({
+            "message": msg,
+            "time": (base_time - timedelta(minutes=i * 3)).strftime("%H:%M:%S"),
+            "type": type_
+        })
+    st.session_state["live_alerts"] = alerts_list
+
+# Persistent Chat Copilot History
+if "chat_messages" not in st.session_state:
+    st.session_state["chat_messages"] = [
+        {"role": "assistant", "content": "Hello! I am the automated risk advisor copilot. Ask me anything about the metrics, anomalies, or security posture of the monitored transaction streams."}
+    ]
+
 # --------------------------------------------------
 # CACHED DATA & MODEL LOADERS
 # --------------------------------------------------
@@ -41,7 +72,7 @@ def load_kpi_data():
         return json.load(file)
 
 # --------------------------------------------------
-# PAGE CONFIG & ADVANCED FLUID STYLES
+# PAGE CONFIG & PREMIUM CYBER-FINANCIAL STYLES
 # --------------------------------------------------
 
 st.set_page_config(
@@ -49,181 +80,424 @@ st.set_page_config(
     layout="wide"
 )
 
-# Advanced Micro-Animation & Glassmorphic Layer Engine Injection
+# Advanced Micro-Animation & Dark Glassmorphic Design Engine
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --primary-navy: #0F172A;
-  --accent-blue: #2563EB;
-  --text-primary: #1E293B;
-  --text-muted: #64748B;
+  --bg-primary: #070a13;
+  --bg-card: rgba(18, 24, 38, 0.65);
+  --border-card: rgba(255, 255, 255, 0.08);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent-cyan: #00f2fe;
+  --accent-violet: #9d4edd;
+  --gradient-accent: linear-gradient(135deg, #00f2fe 0%, #9d4edd 100%);
+  --color-success: #06d6a0;
+  --color-warning: #ffb703;
+  --color-danger: #ff5252;
 }
 
-@keyframes fluidPlasma {
-    0% { background-position: 0% 50%, 100% 50%; }
-    50% { background-position: 100% 50%, 0% 50%; }
-    100% { background-position: 0% 50%, 100% 50%; }
+/* Base resets & typography */
+html, body, [data-testid="stAppViewContainer"] {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 .stApp {
-    font-family: 'Inter', sans-serif !important;
     background-image: 
-        radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.06) 0%, transparent 45%),
-        linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
-    background-size: 200% 200%;
-    animation: fluidPlasma 15s ease infinite;
+        radial-gradient(circle at 5% 10%, rgba(0, 242, 254, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 95% 85%, rgba(157, 78, 221, 0.04) 0%, transparent 40%),
+        linear-gradient(180deg, #070a13 0%, #0d1220 100%) !important;
+    background-size: cover;
     color: var(--text-primary) !important;
 }
 
 #MainMenu, footer, header {visibility: hidden;}
 
-.stTextInput>div>div, .stNumberInput>div>div, .stMultiselect>div>div, .stSelectbox>div>div, .stForm>div, .stSidebar {
-  background: rgba(255, 255, 255, 0.5) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.7) !important;
-  color: var(--text-primary) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 4px 12px rgba(148, 163, 184, 0.03) !important;
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif !important;
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
 }
 
+/* Sidebar Custom Styling */
+section[data-testid="stSidebar"] {
+    background-color: rgba(10, 15, 28, 0.85) !important;
+    border-right: 1px solid var(--border-card) !important;
+}
+section[data-testid="stSidebar"] * {
+    color: var(--text-secondary) !important;
+}
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+    color: var(--text-primary) !important;
+}
+
+/* KPI Box Design */
 .kpi-box {
-    background: rgba(255, 255, 255, 0.45);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    padding: 26px;
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-card);
+    padding: 24px;
     border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(148, 163, 184, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.kpi-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: var(--gradient-accent);
+    opacity: 0.8;
 }
 .kpi-box:hover {
-    transform: translateY(-4px);
-    background: rgba(255, 255, 255, 0.7);
-    border-color: rgba(37, 99, 235, 0.25);
-    box-shadow: 0 12px 40px rgba(37, 99, 235, 0.08);
+    transform: translateY(-3px);
+    border-color: rgba(0, 242, 254, 0.3);
+    box-shadow: 0 12px 35px rgba(0, 242, 254, 0.12);
 }
-.kpi-title { color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
-.kpi-value { color: var(--primary-navy); font-size: 34px; font-weight: 800; margin-top: 6px; letter-spacing: -0.5px; }
+.kpi-title { 
+    color: var(--text-secondary); 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 1.2px; 
+    font-family: 'Outfit', sans-serif;
+}
+.kpi-value { 
+    color: var(--text-primary); 
+    font-size: 32px; 
+    font-weight: 800; 
+    margin-top: 8px; 
+    letter-spacing: -0.5px;
+    font-family: 'Outfit', sans-serif;
+    background: linear-gradient(135deg, #ffffff, #cbe2ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
 
+/* Amount statistics cards */
 .amount-box {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(10px);
+    background: rgba(22, 28, 45, 0.4);
+    border: 1px solid var(--border-card);
     padding: 20px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
     text-align: center;
-    box-shadow: 0 4px 14px rgba(148, 163, 184, 0.02);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    transition: all 0.25s ease;
 }
-.amount-box .kpi-value { color: var(--accent-blue); font-size: 26px; }
-
-.stDownloadButton button {
-    border-radius: 10px; font-weight: 600; border: 1px solid rgba(37, 99, 235, 0.15) !important;
-    background: rgba(255, 255, 255, 0.6) !important; color: var(--accent-blue) !important;
-    backdrop-filter: blur(4px); padding: 10px 20px; transition: all 0.2s ease;
+.amount-box:hover {
+    background: rgba(22, 28, 45, 0.6);
+    border-color: rgba(157, 78, 221, 0.3);
+    transform: translateY(-2px);
 }
-.stDownloadButton button:hover {
-    background: var(--accent-blue) !important; color: white !important;
-}
-.stButton button {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-    color: white !important; border-radius: 12px; font-weight: 600; width: 100%; 
-    border: none !important; padding: 14px !important; letter-spacing: 0.2px;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.18); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.stButton button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 22px rgba(37, 99, 235, 0.3) !important;
+.amount-box .kpi-value { 
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 24px; 
 }
 
-.stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: 600; color: var(--text-muted); padding: 12px 20px; }
-.stTabs [aria-selected="true"] { 
-    background: rgba(255, 255, 255, 0.5) !important; 
-    border-radius: 12px 12px 0 0;
-    border-bottom: 3px solid var(--accent-blue) !important;
-    color: var(--accent-blue) !important;
+/* Streamlit Button Overrides */
+div.stButton > button {
+    background: var(--gradient-accent) !important;
+    color: #070a13 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    font-family: 'Outfit', sans-serif !important;
+    padding: 12px 24px !important;
+    font-size: 15px !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25) !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    width: 100%;
+}
+div.stButton > button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4) !important;
+    color: #070a13 !important;
 }
 
+/* Download button */
+div.stDownloadButton > button {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--accent-cyan) !important;
+    border: 1px solid rgba(0, 242, 254, 0.2) !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    padding: 10px 20px !important;
+    transition: all 0.2s ease !important;
+}
+div.stDownloadButton > button:hover {
+    background: var(--accent-cyan) !important;
+    color: #070a13 !important;
+    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2) !important;
+}
+
+/* Form Styling */
+div[data-testid="stForm"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-card) !important;
+    border-radius: 16px !important;
+    padding: 30px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+}
+
+/* Text & number inputs */
+.stTextInput input, .stNumberInput input, .stSelectbox [role="combobox"] {
+    background-color: rgba(10, 14, 23, 0.8) !important;
+    border: 1px solid var(--border-card) !important;
+    color: var(--text-primary) !important;
+    border-radius: 10px !important;
+}
+.stTextInput input:focus, .stNumberInput input:focus {
+    border-color: var(--accent-cyan) !important;
+    box-shadow: 0 0 0 1px var(--accent-cyan) !important;
+}
+
+/* Custom Tabs layout styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background-color: transparent;
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: rgba(22, 28, 45, 0.4) !important;
+    border: 1px solid var(--border-card) !important;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 10px 24px !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 600 !important;
+    color: var(--text-secondary) !important;
+    margin-right: 4px;
+}
+.stTabs [aria-selected="true"] {
+    background-color: rgba(22, 28, 45, 0.8) !important;
+    border-bottom: 2px solid var(--accent-cyan) !important;
+    color: var(--accent-cyan) !important;
+}
+
+/* Plotly dashboard card */
 [data-testid="stPlotlyChart"] {
-  background: rgba(255, 255, 255, 0.55) !important; 
-  backdrop-filter: blur(16px);
-  border-radius: 16px; padding: 20px; 
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 10px 30px rgba(148, 163, 184, 0.03);
+  background: var(--bg-card) !important; 
+  border-radius: 16px !important; 
+  padding: 18px !important; 
+  border: 1px solid var(--border-card) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
 }
 
-/* Custom Chat Style Enforcements */
-.user-bubble {
-    background: #E2E8F0; color: #0F172A; padding: 12px 16px; border-radius: 16px 16px 0px 16px;
-    margin: 8px 0; max-width: 80%; float: right; clear: both; font-size: 14px; font-weight: 500;
+/* Real-Time Live Feed Vertical Timeline */
+.timeline {
+    position: relative;
+    margin-left: 10px;
+    padding-left: 20px;
+    border-left: 2px dashed rgba(255, 255, 255, 0.1);
 }
-.copilot-bubble {
-    background: #EFF6FF; color: #1E40AF; padding: 16px; border-radius: 16px 16px 16px 0px;
-    border: 1px solid #BFDBFE; margin: 8px 0; max-width: 85%; float: left; clear: both;
-    font-size: 14px; line-height: 1.5; box-shadow: 0 2px 8px rgba(37,99,235,0.04);
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
 }
-.executive-box{
-    background: linear-gradient(
-        135deg,
-        #0F172A,
-        #1E40AF
-    );
-    color:white;
-    padding:25px;
-    border-radius:18px;
-    margin-bottom:20px;
-    box-shadow:0 8px 24px rgba(0,0,0,0.15);
+.timeline-badge {
+    position: absolute;
+    left: -29px;
+    top: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-primary);
 }
-.alert-box{
-    background:#FEF2F2;
-    border-left:6px solid #DC2626;
-    padding:18px;
-    border-radius:12px;
-    margin-bottom:15px;
-    font-size:16px;
+.timeline-badge.danger { background-color: var(--color-danger); box-shadow: 0 0 8px var(--color-danger); }
+.timeline-badge.warning { background-color: var(--color-warning); box-shadow: 0 0 8px var(--color-warning); }
+.timeline-badge.success { background-color: var(--color-success); box-shadow: 0 0 8px var(--color-success); }
+
+.timeline-card {
+    background: rgba(22, 28, 45, 0.45);
+    border: 1px solid var(--border-card);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
 }
+.timeline-card:hover {
+    background: rgba(22, 28, 45, 0.65);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+.timeline-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+.timeline-msg {
+    font-size: 13.5px;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+/* Chief Risk Officer briefing */
+.executive-box {
+    background: linear-gradient(135deg, rgba(18, 24, 38, 0.8), rgba(10, 15, 28, 0.95));
+    border: 1px solid rgba(157, 78, 221, 0.2);
+    position: relative;
+    padding: 26px;
+    border-radius: 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.executive-badge {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(157, 78, 221, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(157, 78, 221, 0.3);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+.executive-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 14px;
+    margin-bottom: 12px;
+}
+
+/* Chat system bubbles styling */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 10px;
+    margin-bottom: 25px;
+}
+.chat-bubble {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 14px;
+    line-height: 1.5;
+    font-size: 14px;
+    max-width: 85%;
+    animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.chat-bubble.user {
+    background: rgba(0, 242, 254, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.2);
+    align-self: flex-end;
+    color: var(--text-primary);
+    border-top-right-radius: 0;
+}
+.chat-bubble.copilot {
+    background: rgba(157, 78, 221, 0.08);
+    border: 1px solid rgba(157, 78, 221, 0.2);
+    align-self: flex-start;
+    color: var(--text-primary);
+    border-top-left-radius: 0;
+}
+.chat-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.chat-avatar.user {
+    background: var(--accent-cyan);
+    color: #070a13;
+}
+.chat-avatar.copilot {
+    background: var(--accent-violet);
+    color: #f8fafc;
+}
+.chat-content {
+    flex: 1;
+}
+
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
 
+/* Number input labels */
+.stNumberInput label {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+
+/* Additional Streamlit label selectors */
+div[data-testid="stNumberInput"] label {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+
+/* Form labels */
+[data-testid="stWidgetLabel"] {
+    color: #FFFFFF !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 # --------------------------------------------------
 # GRAPH THEME FUNCTIONS
 # --------------------------------------------------
 
 def apply_plotly_clean_theme(fig, title_x=0.02):
-    fig.update_layout(
-        template="plotly_white",
+    # Detect trace types in the figure
+    trace_types = {t.type for t in fig.data}
+    has_cartesian = any(t in ['scatter', 'bar', 'histogram', 'box', 'violin'] for t in trace_types)
+    
+    # Configure hovermode safely based on trace type
+    hovermode = "x unified" if has_cartesian else None
+    
+    layout_update = dict(
+        template="plotly_dark",
         title_x=title_x,
         height=500,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", color="#475569", size=12),
+        font=dict(family="Outfit, Inter, sans-serif", color="#94A3B8", size=12),
         margin=dict(l=40, r=20, t=60, b=40),
-        hovermode="x unified",
-        legend=dict(bgcolor="rgba(255,255,255,0.7)", bordercolor="rgba(255,255,255,0.3)"),
+        legend=dict(bgcolor="rgba(10,15,28,0.7)", bordercolor="rgba(255,255,255,0.05)"),
     )
-
-    # Robust trace styling (avoid invalid/typo marker attributes)
-    # - Scatter traces: keep plotly defaults (or they may not have marker.color shaped similarly)
-    # - Pie traces: handled by plotly
-    if len(fig.data):
-        for trace in fig.data:
-            try:
-                if hasattr(trace, "marker") and not isinstance(trace, (go.Pie, go.Scatter)):
-                    # marker.color exists for bar-like traces
-                    marker = getattr(trace, "marker", None)
-                    if marker is not None:
-                        if hasattr(marker, "color") and marker.color is not None:
-                            trace.marker.color = "#2563EB"
-            except Exception:
-                pass
+    if hovermode is not None:
+        layout_update["hovermode"] = hovermode
+        
+    fig.update_layout(**layout_update)
+    
+    # Only update x/y axes if the figure uses Cartesian coordinates
+    if has_cartesian:
+        try:
+            fig.update_xaxes(showgrid=False, linecolor="rgba(255,255,255,0.08)", tickfont=dict(color="#94a3b8"))
+            fig.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)", linecolor="rgba(255,255,255,0.08)", tickfont=dict(color="#94a3b8"))
+        except Exception:
+            pass
+            
+    # Clean/check trace markers safely
+    for trace in fig.data:
+        if hasattr(trace, 'marker') and isinstance(trace.marker, dict):
+            # Ensure marker configuration is safe
+            pass
+            
     return fig
 
 def render_section_header(title, is_gradient=False):
-    accent = "#EF4444" if is_gradient else "#2563EB"
-    style = f"border-left: 4px solid {accent}; padding: 2px 14px; font-weight: 700; font-size: 18px; color: #0F172A; margin: 28px 0 16px 0; letter-spacing: -0.3px;"
+    accent = "var(--color-danger)" if is_gradient else "var(--accent-cyan)"
+    style = f"border-left: 4px solid {accent}; padding: 2px 14px; font-weight: 700; font-size: 18px; color: var(--text-primary); margin: 28px 0 16px 0; letter-spacing: -0.3px; font-family: 'Outfit';"
     st.markdown(f'<div style="{style}">{title}</div>', unsafe_allow_html=True)
 
 # --------------------------------------------------
@@ -231,25 +505,68 @@ def render_section_header(title, is_gradient=False):
 # --------------------------------------------------
 
 st.markdown("""
-<div style="background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.6); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(148,163,184,0.03); margin-bottom: 30px;">
-  <span style="color: #2563EB; font-size: 11px; font-weight:800; letter-spacing: 2px; text-transform: uppercase; background: rgba(37,99,235,0.06); padding: 4px 10px; border-radius: 20px;">Decision Intelligence Suite</span>
-  <h1 style="color:#0F172A; font-size:36px; font-weight: 800; margin: 12px 0 8px 0; letter-spacing: -0.8px;">Financial Risk Command Environment</h1>
-  <p style="color:#64748B; font-size:16px; margin:0;">Securing asset tracking networks through micro-stratified diagnostics • <b>6.3M+ Log Entries Monitored</b></p>
+<div style="background: linear-gradient(135deg, rgba(18, 24, 38, 0.7), rgba(10, 15, 28, 0.8)); backdrop-filter: blur(20px); border: 1px solid rgba(0, 242, 254, 0.15); padding: 35px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); margin-bottom: 30px; position: relative;">
+  <div style="position: absolute; top: 20px; right: 25px; display: flex; align-items: center; gap: 8px;">
+    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #06d6a0; box-shadow: 0 0 10px #06d6a0; animation: pulse 2s infinite;"></span>
+    <span style="color: #06d6a0; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; font-family: 'Outfit';">Live Node Verified</span>
+  </div>
+  <span style="color: #00F2FE; font-size: 11px; font-weight:800; letter-spacing: 2.5px; text-transform: uppercase; background: rgba(0,242,254,0.1); border: 1px solid rgba(0,242,254,0.2); padding: 5px 12px; border-radius: 20px; font-family: 'Outfit';">Decision Intelligence Suite</span>
+  <h1 style="color:#f8fafc; font-size:36px; font-weight: 800; margin: 16px 0 8px 0; letter-spacing: -1px; font-family: 'Outfit';">Financial Risk Command Environment</h1>
+  <p style="color:#94A3B8; font-size:15px; margin:0; line-height: 1.5;">Securing asset tracking networks through micro-stratified diagnostics • <b style="color: #9D4EDD;">6.3M+ Log Entries Monitored</b></p>
+</div>
+<style>
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(6, 214, 160, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 214, 160, 0); }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Render top status pills as a beautiful HTML grid
+st.markdown("""
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 25px;">
+  <div style="background: rgba(22, 28, 45, 0.35); border: 1px solid rgba(255,255,255,0.05); padding: 14px 20px; border-radius: 12px; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 18px;">📊</span>
+    <div>
+      <div style="font-size: 10px; text-transform: uppercase; color: #94A3B8; letter-spacing: 0.5px;">Monitored Volume</div>
+      <div style="font-size: 13.5px; font-weight: 700; color: #f8fafc;">6.3M+ Vectors</div>
+    </div>
+  </div>
+  <div style="background: rgba(22, 28, 45, 0.35); border: 1px solid rgba(255,255,255,0.05); padding: 14px 20px; border-radius: 12px; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 18px;">🛡</span>
+    <div>
+      <div style="font-size: 10px; text-transform: uppercase; color: #94A3B8; letter-spacing: 0.5px;">Risk Guardrail</div>
+      <div style="font-size: 13.5px; font-weight: 700; color: #06d6a0;">Integrity Verified</div>
+    </div>
+  </div>
+  <div style="background: rgba(22, 28, 45, 0.35); border: 1px solid rgba(255,255,255,0.05); padding: 14px 20px; border-radius: 12px; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 18px;">⚡</span>
+    <div>
+      <div style="font-size: 10px; text-transform: uppercase; color: #94A3B8; letter-spacing: 0.5px;">Simulation Engine</div>
+      <div style="font-size: 13.5px; font-weight: 700; color: #00F2FE;">Pipeline Synced</div>
+    </div>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
-sc1, sc2, sc3 = st.columns(3)
-sc1.info("📊 Total Monitored Volume: 6.3M+ Vectors")
-sc2.info("🛡 Risk Guardrail Integrity: Verified")
-sc3.info("⚡ Simulation Engine Pipeline: Synced")
-st.divider()
-
 with st.sidebar:
-    st.markdown('<div style="font-size:17px; font-weight:700; color:#0F172A; padding-bottom:6px; letter-spacing:-0.2px;">System Infrastructure</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:19px; font-weight:800; color:#f8fafc; padding-bottom:6px; letter-spacing:-0.2px; font-family:\'Outfit\';">System Infrastructure</div>', unsafe_allow_html=True)
     st.caption("Risk Matrix Verification Node")
-    st.success("✔ Analysis Framework Active")
-    st.info("📊 Metrics Model Aggregated")
-    st.info("🤖 Inference Pipeline Ready")
+    
+    st.markdown("""
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px; margin-bottom: 20px;">
+      <div style="background: rgba(6, 214, 160, 0.1); border-left: 3px solid #06d6a0; padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 12.5px; color: #e2e8f0;">
+        <span style="font-weight: 600; color: #06d6a0;">✔ Active</span> Analysis Framework
+      </div>
+      <div style="background: rgba(0, 242, 254, 0.1); border-left: 3px solid #00f2fe; padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 12.5px; color: #e2e8f0;">
+        <span style="font-weight: 600; color: #00f2fe;">📊 Loaded</span> Metrics Model Aggregation
+      </div>
+      <div style="background: rgba(157, 78, 221, 0.1); border-left: 3px solid #9d4edd; padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 12.5px; color: #e2e8f0;">
+        <span style="font-weight: 600; color: #9d4edd;">🤖 Ready</span> Inference Pipeline
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.divider()
     st.caption("Enterprise Risk Copilot v2.4")
 
@@ -263,19 +580,8 @@ def get_executive_summary():
     except Exception as e:
          return f"⚠️ AI Chief Risk Officer executive summary is temporarily unavailable due to API limits ({str(e)}). Please try reloading the page later."
 
-@st.cache_data
-def get_percentile_95(amount_stats_mean):
-    np.random.seed(42)
-    mock_amounts_for_thresholds = np.random.exponential(
-        scale=amount_stats_mean * 1.5,
-        size=400
-    )
-    return float(np.percentile(mock_amounts_for_thresholds, 95))
-
-# Shared deterministic mock thresholds so other tabs can safely use them.
-# Tab 3 previously depended on a variable computed only inside Tab 1.
-_amount_stats_mean = kpis.get("amount_statistics", {}).get("mean_amount", 1.0)
-percentile_95 = get_percentile_95(_amount_stats_mean)
+# Shared deterministic mock thresholds
+percentile_95 = kpis.get("percentile_95", 766043.571251641)
 
 tab1, tab2, tab3 = st.tabs(
     [
@@ -284,16 +590,27 @@ tab1, tab2, tab3 = st.tabs(
         "🧠 AI Copilot"
     ]
 )
-def generate_live_alert():
-    alerts = [
-        "🚨 High-risk transfer detected",
-        "⚠️ Abnormal destination balance movement",
-        "⚠️ Potential account takeover pattern",
-        "✅ Transaction verified successfully",
-        "🚨 Isolation Forest anomaly detected",
-        "⚠️ Velocity threshold exceeded"
-    ]
-    return random.choice(alerts)
+
+# Function to simulate new live alerts incrementally
+def add_live_alert_if_needed():
+    if random.random() < 0.25:  # 25% chance to insert an alert on reload
+        new_alerts = [
+            ("🚨 Automated flag triggered: High-value TRANSFER deviation", "danger"),
+            ("⚠️ Unusual activity pattern detected in origin routing account", "warning"),
+            ("🚨 Isolation Forest anomaly classification: score 0.892", "danger"),
+            ("✅ Verification node confirmation: transaction cleared", "success"),
+            ("⚠️ Destination account balance delta ratio mismatch", "warning")
+        ]
+        chosen = random.choice(new_alerts)
+        # Avoid duplicate consecutive messages
+        if st.session_state["live_alerts"] and st.session_state["live_alerts"][0]["message"] != chosen[0]:
+            st.session_state["live_alerts"].insert(0, {
+                "message": chosen[0],
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "type": chosen[1]
+            })
+            if len(st.session_state["live_alerts"]) > 8:
+                st.session_state["live_alerts"].pop()
 
 # --------------------------------------------------
 # TAB 1: METRICS & DIAGNOSTIC VISUALIZATION
@@ -315,38 +632,30 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
             
-    render_section_header("Transaction Channel Volume Distributions")
-    st.divider()
-    
-    render_section_header("🚨 Live Fraud Monitoring Feed")
-
-    alerts = [generate_live_alert() for _ in range(5)]
-    for alert in alerts:
-        st.markdown(
-            f"""
-            <div class='alert-box'>
-                {alert}
-                <br>
-                {datetime.now().strftime("%H:%M:%S")}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-    render_section_header("🧠 Executive Intelligence Center")
+    # Executive summary block at the top
+    render_section_header("🧠 Chief Risk Officer Briefing")
     summary = get_executive_summary()
-    
-    st.markdown(
-        f"""
-        <div class="executive-box">
-            {summary}
+    escaped_summary = _html.escape(summary).replace('\n', '<br>')
+    st.markdown(f"""
+    <div class="executive-box">
+        <div class="executive-badge">Briefing Node</div>
+        <div class="executive-title">Executive Intelligence Center</div>
+        <div style="font-size: 14.5px; color: #cbd5e1; line-height: 1.6; font-family: 'Inter';">
+            {escaped_summary}
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+    </div>
+    """, unsafe_allow_html=True)
 
+    render_section_header("Transaction Channel Volume Distributions")
     transaction_df = pd.DataFrame(list(kpis["transaction_distribution"].items()), columns=["Transaction Type", "Count"])
-    fig = px.bar(transaction_df, x="Transaction Type", y="Count", title="Log Density Classification", color_discrete_sequence=['#2563EB'])
+    fig = px.bar(
+        transaction_df, 
+        x="Transaction Type", 
+        y="Count", 
+        title="Log Density Classification",
+        color="Transaction Type",
+        color_discrete_sequence=['#00F2FE', '#9D4EDD', '#06D6A0', '#FFB703', '#FF5252']
+    )
     apply_plotly_clean_theme(fig)
     st.plotly_chart(fig, width="stretch")
 
@@ -370,20 +679,42 @@ with tab1:
 
     st.divider()
 
-    render_section_header("Isolate Core Segment Matrix")
-    all_types = sorted(list(kpis["transaction_distribution"].keys()))
-    selected_types = st.multiselect("Isolate Target Channels for Review:", options=all_types, default=all_types)
+    col_pie, col_alert = st.columns([3, 2])
+    
+    with col_pie:
+        render_section_header("Isolate Core Segment Matrix")
+        all_types = sorted(list(kpis["transaction_distribution"].keys()))
+        selected_types = st.multiselect("Isolate Target Channels for Review:", options=all_types, default=all_types)
 
-    fraud_by_type = kpis["fraud_by_type"]
-    total_by_type = kpis["transaction_distribution"]
-    filtered_fraud_total = sum(int(fraud_by_type.get(t, 0)) for t in selected_types)
-    filtered_total = sum(int(total_by_type.get(t, 0)) for t in selected_types)
-    filtered_non_fraud_total = max(filtered_total - filtered_fraud_total, 0)
+        fraud_by_type = kpis["fraud_by_type"]
+        total_by_type = kpis["transaction_distribution"]
+        filtered_fraud_total = sum(int(fraud_by_type.get(t, 0)) for t in selected_types)
+        filtered_total = sum(int(total_by_type.get(t, 0)) for t in selected_types)
+        filtered_non_fraud_total = max(filtered_total - filtered_fraud_total, 0)
 
-    pie_df = pd.DataFrame({"Category": ["Verified Irregularity", "Standard Volume"], "Count": [filtered_fraud_total, filtered_non_fraud_total]})
-    pie_fig = px.pie(pie_df, names="Category", values="Count", title="Isolate Signal Veracity Breakdowns", color_discrete_sequence=['#EF4444', '#10B981'])
-    apply_plotly_clean_theme(pie_fig)
-    st.plotly_chart(pie_fig, width="stretch")
+        pie_df = pd.DataFrame({"Category": ["Verified Irregularity", "Standard Volume"], "Count": [filtered_fraud_total, filtered_non_fraud_total]})
+        pie_fig = px.pie(pie_df, names="Category", values="Count", title="Isolate Signal Veracity Breakdowns", color_discrete_sequence=['#ff5252', '#06d6a0'])
+        apply_plotly_clean_theme(pie_fig)
+        st.plotly_chart(pie_fig, width="stretch")
+
+    with col_alert:
+        render_section_header("🚨 Live Fraud Monitoring Feed")
+        add_live_alert_if_needed()
+        
+        timeline_html = '<div class="timeline">'
+        for item in st.session_state["live_alerts"]:
+            badge_class = item["type"]
+            timeline_html += (
+                f'<div class="timeline-item">'
+                f'<div class="timeline-badge {badge_class}"></div>'
+                f'<div class="timeline-card">'
+                f'<div class="timeline-time">{item["time"]}</div>'
+                f'<div class="timeline-msg">{item["message"]}</div>'
+                f'</div>'
+                f'</div>'
+            )
+        timeline_html += '</div>'
+        st.markdown(timeline_html, unsafe_allow_html=True)
 
     st.divider()
 
@@ -407,19 +738,19 @@ with tab1:
     
     with sc_col1:
         scatter_fig = px.scatter(scatter_df, x="Transaction Amount (₹)", y="Account Balance Delta Score", color="Risk Classification",
-                                color_discrete_map={"Baseline Standard": "#10B981", "Investigative Alert": "#F59E0B", "High-Risk Anomaly": "#EF4444"})
-        scatter_fig.add_vline(x=percentile_95, line_dash="dash", line_color="#EF4444", annotation_text="95th Percentile Limit")
+                                color_discrete_map={"Baseline Standard": "#06d6a0", "Investigative Alert": "#ffb703", "High-Risk Anomaly": "#ff5252"})
+        scatter_fig.add_vline(x=percentile_95, line_dash="dash", line_color="#ff5252", annotation_text="95th Percentile Limit")
         apply_plotly_clean_theme(scatter_fig)
         st.plotly_chart(scatter_fig, width="stretch")
         
     with sc_col2:
         st.markdown(f"""
-        <div style="background: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.6); padding:24px; border-radius:14px; height:100%;">
-            <p style="font-weight:700; margin-bottom:6px; color:#0F172A; font-size:14px;">Cohort Inferences</p>
-            <p style="color:#475569; font-size:12.5px; line-height:1.5; margin-bottom:16px;">Isolates population parameters to streamline investigation task queues.</p>
-            <hr style="border:0; border-top:1px solid rgba(148,163,184,0.2); margin-bottom:16px;"/>
-            <p style="font-size:11px; font-weight:700; color:#64748B; text-transform:uppercase;">95% Threshold Line</p>
-            <p style="font-size:20px; font-weight:800; color:#EF4444; margin-top:2px;">₹ {percentile_95:,.2f}</p>
+        <div style="background: rgba(22, 28, 45, 0.45); border: 1px solid var(--border-card); padding:24px; border-radius:14px; height:100%; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <p style="font-weight:700; margin-bottom:6px; color:#f8fafc; font-size:14.5px; font-family:'Outfit';">Cohort Inferences</p>
+            <p style="color:#94a3b8; font-size:12.5px; line-height:1.5; margin-bottom:16px;">Isolates population parameters to streamline investigation task queues.</p>
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.08); margin-bottom:16px;"/>
+            <p style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing: 0.5px;">95% Threshold Line</p>
+            <p style="font-size:22px; font-weight:800; color:#ff5252; margin-top:2px; font-family:'Outfit';">₹ {percentile_95:,.2f}</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -443,10 +774,12 @@ def generate_sample_transaction():
 with tab2:
     st.divider()
     
-    if st.button("🎲 Generate Suspicious Transaction"):
-        sample = generate_sample_transaction()
-        st.session_state["generated_transaction"] = sample
-        st.success("Sample transaction generated.")
+    col_gen, _ = st.columns([1, 3])
+    with col_gen:
+        if st.button("🎲 Generate Suspicious Transaction"):
+            sample = generate_sample_transaction()
+            st.session_state["generated_transaction"] = sample
+            st.success("Sample transaction generated.")
 
     # Pre-populate form fields from generated transaction if available
     gen_txn = st.session_state.get("generated_transaction", {})
@@ -456,7 +789,7 @@ with tab2:
     oldbalanceDest = gen_txn.get("oldbalanceDest", 0.0)
     newbalanceDest = gen_txn.get("newbalanceDest", 50000.0)
 
-    st.markdown('<div style="background: rgba(37,99,235,0.04); border: 1px solid rgba(37,99,235,0.15); padding:16px 20px; border-radius:10px; font-weight:600; color:#1E293B; margin-bottom:12px;">🛡 Interactive Verification Matrix</div>', unsafe_allow_html=True)
+    st.markdown('<div style="background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.15); padding:16px 20px; border-radius:12px; font-weight:600; color:#f8fafc; font-family:\'Outfit\'; margin-bottom:15px; display:flex; align-items:center; gap:10px;"><span>🛡</span> Interactive Verification Matrix</div>', unsafe_allow_html=True)
     
     model = load_model()
 
@@ -469,7 +802,10 @@ with tab2:
         with col2:
             oldbalanceOrg = st.number_input("Baseline Structural Origin Balance", min_value=0.0, value=float(oldbalanceOrg))
             oldbalanceDest = st.number_input("Baseline Structural Destination Balance", min_value=0.0, value=float(oldbalanceDest))
-        submitted = st.form_submit_button("🛡 RUN INTERACTIVE RISK AUDIT")
+        submitted = st.form_submit_button(
+    "🛡 RUN INTERACTIVE RISK AUDIT",
+    type="primary"
+)
 
     if submitted:
         input_data = pd.DataFrame([[amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest]], 
@@ -477,25 +813,63 @@ with tab2:
         probability = model.predict_proba(input_data)
         fraud_probability = probability[0][1] * 100
 
-        gauge = go.Figure(go.Indicator(
-            mode="gauge+number", value=fraud_probability,
-            title={"text": "Determined Anomaly Score Risk Index", "font": {"family": "Inter", "color": "#1E293B", "size": 14, "weight": "bold"}},
-            gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#2563EB"}, "bgcolor": "rgba(226, 232, 240, 0.4)",
-                   "steps": [{"range": [0, 40], "color": "rgba(16, 185, 129, 0.12)"},
-                             {"range": [40, 80], "color": "rgba(245, 158, 11, 0.12)"},
-                             {"range": [80, 100], "color": "rgba(239, 68, 68, 0.12)"}]}
-        ))
-        gauge.update_layout(height=340, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(gauge, width="stretch", key="fraud_risk_gauge")
+        col_g, col_desc = st.columns([1, 1])
+        
+        with col_g:
+            gauge = go.Figure(go.Indicator(
+                mode="gauge+number", value=fraud_probability,
+                title={"text": "Determined Anomaly Score Risk Index", "font": {"family": "Outfit, Inter", "color": "#f8fafc", "size": 15, "weight": "bold"}},
+                gauge={"axis": {"range": [0, 100], "tickcolor": "#94a3b8"}, "bar": {"color": "#00f2fe"}, "bgcolor": "rgba(255, 255, 255, 0.05)",
+                       "steps": [{"range": [0, 40], "color": "rgba(6, 214, 160, 0.15)"},
+                                 {"range": [40, 80], "color": "rgba(255, 183, 3, 0.15)"},
+                                 {"range": [80, 100], "color": "rgba(255, 82, 82, 0.15)"}]}
+            ))
+            gauge.update_layout(
+                height=320, 
+                paper_bgcolor="rgba(0,0,0,0)", 
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Outfit, Inter, sans-serif", color="#f8fafc")
+            )
+            st.plotly_chart(gauge, width="stretch", key="fraud_risk_gauge")
 
-        if fraud_probability >= 80:
-            bg_color, text_color, label = "#FEE2E2", "#991B1B", "🚨 ACTION REQUIRED: SIGNATURE COMPROMISE MATCH DETECTED"
-        elif fraud_probability >= 40:
-            bg_color, text_color, label = "#FEF3C7", "#92400E", "⚠️ ATTENTION NEEDED: MODERATE BOUNDARY EXCLUSION EXCEEDED"
-        else:
-            bg_color, text_color, label = "#D1FAE5", "#065F46", "✅ SECURE: VECTOR CONFORMS TO EXPECTED VOLUME METRICS"
-           
-        st.markdown(f'<div style="padding:22px; border-radius:12px; background:{bg_color}; color:{text_color}; text-align:center; font-size:15px; font-weight:600;">{label}</div>', unsafe_allow_html=True)
+        with col_desc:
+            if fraud_probability >= 80:
+                bg_color, text_color, label = "rgba(255, 82, 82, 0.15)", "#ff5252", "🚨 ACTION REQUIRED: SIGNATURE COMPROMISE MATCH DETECTED"
+            elif fraud_probability >= 40:
+                bg_color, text_color, label = "rgba(255, 183, 3, 0.15)", "#ffb703", "⚠️ ATTENTION NEEDED: MODERATE BOUNDARY EXCLUSION EXCEEDED"
+            else:
+                bg_color, text_color, label = "rgba(6, 214, 160, 0.15)", "#06d6a0", "✅ SECURE: VECTOR CONFORMS TO EXPECTED VOLUME METRICS"
+               
+            st.markdown(f'<div style="padding:22px; border-radius:12px; background:{bg_color}; border:1px solid {text_color}; color:{text_color}; text-align:center; font-size:15px; font-weight:700; font-family:\'Outfit\'; margin-top: 50px;">{label}</div>', unsafe_allow_html=True)
+            
+            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+            st.subheader("🚨 Anomaly Detection Engine")
+
+            anomaly_prediction, anomaly_score = detect_anomaly(input_data)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown(f"""
+                <div style="background: rgba(22, 28, 45, 0.45); border: 1px solid var(--border-card); padding: 18px; border-radius: 12px; text-align: center;">
+                  <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Anomaly Score</div>
+                  <div style="font-size: 26px; font-weight: 800; color: var(--accent-cyan); margin-top: 4px; font-family: 'Outfit';">{anomaly_score:.4f}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                if anomaly_prediction == -1:
+                    anomaly_bg, anomaly_color, anomaly_text = "rgba(255, 82, 82, 0.15)", "#ff5252", "⚠️ SUSPICIOUS PATTERN"
+                else:
+                    anomaly_bg, anomaly_color, anomaly_text = "rgba(6, 214, 160, 0.15)", "#06d6a0", "✅ NORMAL PATTERN"
+                    
+                st.markdown(f"""
+                <div style="background: {anomaly_bg}; border: 1px solid {anomaly_color}; padding: 18px; border-radius: 12px; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+                  <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Pattern Verification</div>
+                  <div style="font-size: 16px; font-weight: 800; color: {anomaly_color}; margin-top: 4px; font-family: 'Outfit';">{anomaly_text}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
         st.divider()
 
         st.subheader("🔍 AI Explainability Engine (SHAP)")
@@ -508,14 +882,11 @@ with tab2:
             x="Importance",
             y="Feature",
             orientation="h",
-            title="Feature Contribution Analysis"
+            title="Feature Contribution Analysis",
+            color="Feature",
+            color_discrete_sequence=['#00f2fe', '#9d4edd', '#06d6a0', '#ffb703', '#ff5252']
         )
-
-        shap_fig.update_layout(
-            template="plotly_white",
-            title_x=0.5,
-            height=550
-        )
+        apply_plotly_clean_theme(shap_fig)
 
         st.plotly_chart(
             shap_fig,
@@ -523,45 +894,25 @@ with tab2:
             key="shap_chart"
         )
 
-        top_feature = shap_df.iloc[0]["Feature"]
-        top_importance = shap_df.iloc[0]["Importance"]
+        top_feature = shap_df.iloc[-1]["Feature"]
+        top_importance = shap_df.iloc[-1]["Importance"]
 
-        st.info(
-            f"""
-            🎯 Primary Risk Driver
-            
-            Feature: {top_feature}
-            
-            Contribution Score: {top_importance:.4f}
-            
-            This variable had the strongest influence on the model decision.
-            """
-        )
+        st.markdown(f"""
+        <div style="background: rgba(157, 78, 221, 0.08); border: 1px solid rgba(157, 78, 221, 0.2); padding: 18px; border-radius: 12px; margin-top: 15px;">
+            <div style="font-size: 11px; text-transform: uppercase; color: #c084fc; letter-spacing: 1px; font-weight: 700; margin-bottom: 6px;">🎯 Primary Risk Driver</div>
+            <div style="font-size: 15px; color: var(--text-primary); font-weight: 600; font-family: 'Outfit';">Feature: <span style="color: var(--accent-cyan);">{top_feature}</span></div>
+            <div style="font-size: 13.5px; color: var(--text-secondary); margin-top: 4px;">Contribution Score: <span style="color: #06d6a0; font-weight: 700;">{top_importance:.4f}</span></div>
+            <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 8px; line-height: 1.4; margin-bottom: 0;">This variable had the strongest mathematical influence on the model decision for this transaction instance.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        st.divider()
-
-        st.subheader("🚨 Anomaly Detection Engine")
-
-        anomaly_prediction, anomaly_score = detect_anomaly(input_data)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.metric("Anomaly Score", f"{anomaly_score:.4f}")
-
-        with col2:
-            if anomaly_prediction == -1:
-                st.error("⚠️ Suspicious Transaction Detected")
-            else:
-                st.success("✅ Transaction Pattern Normal")
-                
         st.divider()
 
         render_section_header("🧠 AI Transaction Assessment")
 
         st.metric(
             "Generated Scenario Amount",
-            f"₹ {amount:,.0f}"
+            f"₹ {amount:,.2f}"
         )
 
         with st.spinner("Generating AI assessment..."):
@@ -581,10 +932,17 @@ with tab2:
             except Exception as e:
                 ai_summary = f"⚠️ Copilot advisory assessment is temporarily unavailable due to API rate limits ({str(e)}). Please try again later."
 
+        escaped_ai_summary = _html.escape(ai_summary).replace('\n', '<br>')
         st.markdown(
             f"""
-            <div class='copilot-bubble'>
-                {ai_summary}
+            <div class='chat-container'>
+                <div class="chat-bubble copilot" style="max-width: 100%;">
+                    <div class="chat-avatar copilot">AI</div>
+                    <div class="chat-content">
+                        <div style="font-weight: 600; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Nexus Copilot Advisor</div>
+                        <div style="font-size: 14px; line-height: 1.5;">{escaped_ai_summary}</div>
+                    </div>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
@@ -593,37 +951,48 @@ with tab2:
 # --------------------------------------------------
 # NEW TRACK: INTERACTIVE CLIENT ANALYSIS COPILOT
 # --------------------------------------------------
-import html as _html
-
 with tab3:
     st.divider()
     render_section_header("💬 Automated Risk Advisory Copilot")
     st.caption("Operational Sandbox: Provide a transaction identifier or value below to challenge the cognitive auditor node.")
 
-    # In-memory dictionary map mocking localized customer lookups for live data simulation
-    chat_input = st.text_input("Enter Transaction ID / Flag Reference:", placeholder="e.g., TXN-9082, TRANSFER-OVAL, or custom amounts...")
-
-    if chat_input:
-        safe_chat_input = _html.escape(str(chat_input))
-        st.markdown(
-            f'<div class="user-bubble">Can you explain the current security posture for item query: "{safe_chat_input}"?</div>',
-            unsafe_allow_html=True
-        )
+    # Render persistent conversation history
+    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+    for msg in st.session_state["chat_messages"]:
+        role = msg["role"]
+        content = msg["content"]
+        avatar_label = "U" if role == "user" else "AI"
+        bubble_class = "user" if role == "user" else "copilot"
+        avatar_class = "user" if role == "user" else "copilot"
+        role_label = "User Client" if role == "user" else "Nexus Decision Copilot"
         
+        escaped_content = _html.escape(content).replace('\n', '<br>')
+        
+        st.markdown(f"""
+        <div class="chat-bubble {bubble_class}">
+            <div class="chat-avatar {avatar_class}">{avatar_label}</div>
+            <div class="chat-content">
+                <div style="font-weight: 600; font-size: 11px; color: var(--text-secondary); margin-bottom: 2px;">{role_label}</div>
+                <div style="font-size:14px; line-height:1.5;">{escaped_content}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Interactive input using Streamlit's native chat input
+    user_query = st.chat_input("Enter Transaction ID, query, or custom amount for audit challenge...")
+    
+    if user_query:
+        # Save user message
+        st.session_state["chat_messages"].append({"role": "user", "content": user_query})
+        
+        # Call AI Copilot response
         with st.spinner("🧠 NEXUS AI is analyzing..."):
             try:
-                response_text = ask_copilot(
-                    chat_input,
-                    kpis
-                )
+                response_text = ask_copilot(user_query, kpis)
             except Exception as e:
                 response_text = f"⚠️ Nexus AI Copilot is temporarily unavailable due to API rate limits ({str(e)}). Please try again later."
-
-        st.markdown(
-            f"""
-            <div class="copilot-bubble">
-            {response_text}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        
+        # Save assistant response
+        st.session_state["chat_messages"].append({"role": "assistant", "content": response_text})
+        st.rerun()

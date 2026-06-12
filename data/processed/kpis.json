@@ -20,5 +20,6 @@
     "fraud_by_type": {
         "CASH_OUT": 4116,
         "TRANSFER": 4097
-    }
+    },
+    "percentile_95": 766043.571251641
 }
