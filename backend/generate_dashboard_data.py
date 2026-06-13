@@ -20,7 +20,7 @@ print("Calculating KPIs...")
 kpis = calculate_basic_kpis(df)
 
 os.makedirs(
-    "data/processed",
+    os.path.join(project_root, "data", "processed"),
     exist_ok=True
 )
 
@@ -36,7 +36,7 @@ kpis = json.loads(
 )
 
 with open(
-    "data/processed/kpis.json",
+    os.path.join(project_root, "data", "processed", "kpis.json"),
     "w"
 ) as file:
 
