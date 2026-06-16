@@ -282,3 +282,7 @@ Interests:
 ✔ Enterprise-Oriented Architecture
 
 Built to demonstrate practical applications of Machine Learning, Explainable AI, Business Intelligence, and Financial Risk Analytics in a real-world enterprise setting.
+
+## Live Demo
+
+https://enterprise-financial-decision-intelligence-copilot-hrsyj6oeazp.streamlit.app/
